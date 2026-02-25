@@ -16,17 +16,30 @@ from app.config.settings import COLORES, CHART_PALETTE
 # ====================================================================
 
 _LAYOUT_BASE = dict(
-    font=dict(family="Segoe UI, Arial, sans-serif", size=13, color="#333"),
-    paper_bgcolor="white",
-    plot_bgcolor="#FAFAFA",
+    font=dict(family="Segoe UI, Arial, sans-serif", size=13, color="#e0e0e0"),
+    paper_bgcolor="#0e1117",
+    plot_bgcolor="#161b27",
     margin=dict(l=60, r=30, t=60, b=60),
-    hoverlabel=dict(bgcolor="white", font_size=12, font_color="black"),
+    hoverlabel=dict(bgcolor="#1e2535", font_size=12, font_color="#ffffff"),
     legend=dict(
         orientation="h",
         yanchor="bottom",
         y=1.02,
         xanchor="right",
         x=1,
+        font=dict(color="#e0e0e0"),
+    ),
+    xaxis=dict(
+        gridcolor="#2a2a3e",
+        zerolinecolor="#2a2a3e",
+        tickfont=dict(color="#e0e0e0"),
+        title_font=dict(color="#e0e0e0"),
+    ),
+    yaxis=dict(
+        gridcolor="#2a2a3e",
+        zerolinecolor="#2a2a3e",
+        tickfont=dict(color="#e0e0e0"),
+        title_font=dict(color="#e0e0e0"),
     ),
 )
 
@@ -82,7 +95,7 @@ class ChartGenerator:
                 lambda r: f"{int(r[col_val]):,}  ({r[col_pct]:.1f}%)", axis=1
             ),
             textposition="outside",
-            textfont=dict(color="black"),
+            textfont=dict(color="#f0f0f0"),
             hovertemplate="<b>%{y}</b><br>Cantidad: %{x:,}<extra></extra>",
         ))
 
@@ -124,7 +137,7 @@ class ChartGenerator:
             marker_color=colors,
             text=df_plot[col_val].apply(lambda x: f"{int(x):,}"),
             textposition="outside",
-            textfont=dict(color="black"),
+            textfont=dict(color="#f0f0f0"),
             hovertemplate="<b>%{x}</b><br>Cantidad: %{y:,}<extra></extra>",
         ))
 
@@ -157,7 +170,7 @@ class ChartGenerator:
             marker=dict(colors=CHART_PALETTE[:len(df)]),
             textinfo="label+percent",
             textposition="outside",
-            textfont=dict(color="black"),
+            textfont=dict(color="#f0f0f0"),
             hovertemplate="<b>%{label}</b><br>Cantidad: %{value:,}<br>%{percent}<extra></extra>",
         ))
 
@@ -165,7 +178,7 @@ class ChartGenerator:
         fig.add_annotation(
             text=f"<b>{int(total):,}</b><br>Total",
             showarrow=False,
-            font=dict(size=16, color=COLORES["dark_blue"]),
+            font=dict(size=16, color="#f0f0f0"),
         )
 
         return _apply_base_layout(fig, titulo, height)
@@ -198,7 +211,7 @@ class ChartGenerator:
             marker=dict(size=8),
             text=df_plot[col_y1].apply(lambda x: f"{int(x):,}"),
             textposition="top center",
-            textfont=dict(size=10, color="black"),
+            textfont=dict(size=10, color="#f0f0f0"),
         ))
 
         fig.add_trace(go.Scatter(
@@ -210,7 +223,7 @@ class ChartGenerator:
             marker=dict(size=8),
             text=df_plot[col_y2].apply(lambda x: f"{int(x):,}"),
             textposition="bottom center",
-            textfont=dict(size=10, color="black"),
+            textfont=dict(size=10, color="#f0f0f0"),
         ))
 
         fig.update_layout(
@@ -246,7 +259,7 @@ class ChartGenerator:
             marker_color=COLORES["bar_blue"],
             text=df_plot[col_y1].apply(lambda x: f"{int(x):,}"),
             textposition="outside",
-            textfont=dict(color="black"),
+            textfont=dict(color="#f0f0f0"),
         ))
 
         fig.add_trace(go.Bar(
@@ -256,7 +269,7 @@ class ChartGenerator:
             marker_color=COLORES["bar_red"],
             text=df_plot[col_y2].apply(lambda x: f"{int(x):,}"),
             textposition="outside",
-            textfont=dict(color="black"),
+            textfont=dict(color="#f0f0f0"),
         ))
 
         fig.update_layout(barmode="group")
@@ -285,10 +298,10 @@ class ChartGenerator:
         for col in df_plot.select_dtypes(include=["int64", "int32"]).columns:
             df_plot[col] = df_plot[col].apply(lambda x: f"{x:,}")
 
-        # Colores alternados en filas
+        # Colores alternados en filas — tema oscuro
         n_rows = len(df_plot)
         fill_colors = [
-            ["#F2F2F2" if i % 2 == 0 else "white" for i in range(n_rows)]
+            ["#1e2535" if i % 2 == 0 else "#161b27" for i in range(n_rows)]
             for _ in df_plot.columns
         ]
 
@@ -310,7 +323,7 @@ class ChartGenerator:
             cells=dict(
                 values=[df_plot[c].tolist() for c in df_plot.columns],
                 fill_color=fill_colors,
-                font=dict(size=12),
+                font=dict(size=12, color="#e0e0e0"),
                 align=["left"] + ["center"] * (len(df_plot.columns) - 1),
                 height=28,
             ),
@@ -379,7 +392,8 @@ class ChartGenerator:
         fig.update_layout(
             height=height,
             width=width,
-            paper_bgcolor="white",
+            paper_bgcolor="#0e1117",
+            font=dict(color="#e0e0e0"),
             margin=dict(l=20, r=20, t=60, b=20),
         )
 
