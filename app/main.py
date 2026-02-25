@@ -45,12 +45,15 @@ st.markdown("""
     h2 { color: #1E3A5F !important; border-bottom: 2px solid #CC0000; padding-bottom: 0.3rem; }
     h3 { color: #2563EB !important; }
     
-    /* Tabla personalizada */
-    .styled-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-    .styled-table thead tr { background-color: #CC0000; color: white; }
-    .styled-table th, .styled-table td { padding: 8px 12px; text-align: center; }
-    .styled-table tbody tr:nth-of-type(even) { background-color: #f3f3f3; }
+    /* Tabla personalizada — tema oscuro */
+    .styled-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; background-color: #0e1117; border-radius: 6px; overflow: hidden; }
+    .styled-table thead tr { background-color: #CC0000; color: #ffffff; }
+    .styled-table th, .styled-table td { padding: 10px 14px; text-align: center; color: #e8e8e8; border-bottom: 1px solid #2a2a3e; }
+    .styled-table tbody tr:nth-of-type(odd)  { background-color: #161b27; }
+    .styled-table tbody tr:nth-of-type(even) { background-color: #1e2535; }
+    .styled-table tbody tr:hover { background-color: #1E3A5F; transition: background-color 0.15s; }
     .styled-table .total-row { background-color: #FFFF00 !important; font-weight: bold; }
+    .styled-table .total-row td { color: #0e1117 !important; border-top: 2px solid #CC0000; }
     
     /* Sidebar */
     [data-testid="stSidebar"] { background-color: #1E3A5F; }

@@ -20,7 +20,7 @@ _LAYOUT_BASE = dict(
     paper_bgcolor="white",
     plot_bgcolor="#FAFAFA",
     margin=dict(l=60, r=30, t=60, b=60),
-    hoverlabel=dict(bgcolor="white", font_size=12),
+    hoverlabel=dict(bgcolor="white", font_size=12, font_color="black"),
     legend=dict(
         orientation="h",
         yanchor="bottom",
@@ -82,6 +82,7 @@ class ChartGenerator:
                 lambda r: f"{int(r[col_val]):,}  ({r[col_pct]:.1f}%)", axis=1
             ),
             textposition="outside",
+            textfont=dict(color="black"),
             hovertemplate="<b>%{y}</b><br>Cantidad: %{x:,}<extra></extra>",
         ))
 
@@ -123,6 +124,7 @@ class ChartGenerator:
             marker_color=colors,
             text=df_plot[col_val].apply(lambda x: f"{int(x):,}"),
             textposition="outside",
+            textfont=dict(color="black"),
             hovertemplate="<b>%{x}</b><br>Cantidad: %{y:,}<extra></extra>",
         ))
 
@@ -155,6 +157,7 @@ class ChartGenerator:
             marker=dict(colors=CHART_PALETTE[:len(df)]),
             textinfo="label+percent",
             textposition="outside",
+            textfont=dict(color="black"),
             hovertemplate="<b>%{label}</b><br>Cantidad: %{value:,}<br>%{percent}<extra></extra>",
         ))
 
@@ -195,7 +198,7 @@ class ChartGenerator:
             marker=dict(size=8),
             text=df_plot[col_y1].apply(lambda x: f"{int(x):,}"),
             textposition="top center",
-            textfont=dict(size=10),
+            textfont=dict(size=10, color="black"),
         ))
 
         fig.add_trace(go.Scatter(
@@ -207,7 +210,7 @@ class ChartGenerator:
             marker=dict(size=8),
             text=df_plot[col_y2].apply(lambda x: f"{int(x):,}"),
             textposition="bottom center",
-            textfont=dict(size=10),
+            textfont=dict(size=10, color="black"),
         ))
 
         fig.update_layout(
@@ -243,6 +246,7 @@ class ChartGenerator:
             marker_color=COLORES["bar_blue"],
             text=df_plot[col_y1].apply(lambda x: f"{int(x):,}"),
             textposition="outside",
+            textfont=dict(color="black"),
         ))
 
         fig.add_trace(go.Bar(
@@ -252,6 +256,7 @@ class ChartGenerator:
             marker_color=COLORES["bar_red"],
             text=df_plot[col_y2].apply(lambda x: f"{int(x):,}"),
             textposition="outside",
+            textfont=dict(color="black"),
         ))
 
         fig.update_layout(barmode="group")

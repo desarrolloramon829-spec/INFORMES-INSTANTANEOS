@@ -211,8 +211,8 @@ class StatsEngine:
 
     # ---- Informe 6.10: Modus Operandi ----
     def modus_operandi(self, top_n: int = 15) -> pd.DataFrame:
-        """Conteo de modus operandi más frecuentes."""
-        result = _conteo_simple(self.df, "MODUS_OPER", top_n=top_n)
+        """Conteo de modus operandi más frecuentes (campo multi-valor)."""
+        result = _conteo_multivalor(self.df, "MODUS_OPER", top_n=top_n)
         result["categoria_label"] = (
             result["categoria"]
             .str.replace("_", " ")

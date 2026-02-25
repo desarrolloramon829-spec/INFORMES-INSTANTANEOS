@@ -13,8 +13,9 @@ def render():
     st.markdown("Comparación de delitos entre dos años seleccionados")
 
     df = cargar_datos()
-    # No usar filtros globales aquí, los años se seleccionan directamente
-    engine = get_engine(df)
+    # Aplicar filtros globales (UR, comisaría, delito, modus) al comparativo
+    df_filtered = render_filtros_sidebar(df)
+    engine = get_engine(df_filtered)
     charts = ChartGenerator()
 
     # ---- Selección de años ----
@@ -40,16 +41,6 @@ def render():
         return
 
     st.divider()
-
-    # ---- Filtro opcional por UR ----
-    from app.config.settings import UNIDADES_REGIONALES
-    ur_sel = st.selectbox(
-        "Filtrar por Unidad Regional (opcional)",
-        ["Todas"] + list(UNIDADES_REGIONALES.keys()),
-    )
-
-    if ur_sel != "Todas":
-        engine = engine.filtrar(ur=ur_sel)
 
     # ---- Métricas principales comparativas ----
     eng_ant = engine.filtrar(anio=anio_anterior)
