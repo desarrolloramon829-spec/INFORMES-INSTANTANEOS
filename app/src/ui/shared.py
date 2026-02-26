@@ -4,6 +4,8 @@ Maneja la carga de datos con caché de Streamlit y filtros globales.
 """
 from __future__ import annotations
 
+import datetime
+import calendar
 import re
 import unicodedata
 
@@ -266,6 +268,54 @@ def render_filtros_sidebar(df: pd.DataFrame) -> pd.DataFrame:
         mes_options = ["Todos"] + [MESES_LABELS.get(m, m) for m in MESES]
         mes_sel = st.selectbox("Mes", mes_options, index=0)
 
+        # ---- Filtro de Rango de Fechas (Desde / Hasta) ----
+        # Determinar rango por defecto según Año y Mes seleccionados
+        _has_fecha = "_fecha" in df.columns and df["_fecha"].notna().any()
+        if _has_fecha:
+            _fecha_min = df["_fecha"].dropna().min()
+            _fecha_max = df["_fecha"].dropna().max()
+
+            # Ajustar según Año y Mes seleccionados
+            if anio_sel != "Todos":
+                _a = int(anio_sel)
+                if mes_sel != "Todos":
+                    _mk = next((k for k, v in MESES_LABELS.items() if v == mes_sel), None)
+                    _m = MESES.index(_mk) + 1 if _mk and _mk in MESES else 1
+                    _default_desde = datetime.date(_a, _m, 1)
+                    _default_hasta = datetime.date(_a, _m, calendar.monthrange(_a, _m)[1])
+                else:
+                    _default_desde = datetime.date(_a, 1, 1)
+                    _default_hasta = datetime.date(_a, 12, 31)
+            else:
+                _default_desde = _fecha_min
+                _default_hasta = _fecha_max
+
+            # Asegurar que los defaults estén dentro del rango real
+            if _default_desde < _fecha_min:
+                _default_desde = _fecha_min
+            if _default_hasta > _fecha_max:
+                _default_hasta = _fecha_max
+
+            st.markdown("**Rango de Fechas**")
+            col_desde, col_hasta = st.columns(2)
+            with col_desde:
+                fecha_desde = st.date_input(
+                    "Desde",
+                    value=_default_desde,
+                    min_value=_fecha_min,
+                    max_value=_fecha_max,
+                )
+            with col_hasta:
+                fecha_hasta = st.date_input(
+                    "Hasta",
+                    value=_default_hasta,
+                    min_value=_fecha_min,
+                    max_value=_fecha_max,
+                )
+        else:
+            fecha_desde = None
+            fecha_hasta = None
+
         # ---- Filtro de Delito ----
         delitos = sorted(df["DELITO"].dropna().unique().tolist())
         delito_sel = st.selectbox("Tipo de Delito", ["Todos"] + delitos, index=0)
@@ -310,6 +360,13 @@ def render_filtros_sidebar(df: pd.DataFrame) -> pd.DataFrame:
         mes_key = next((k for k, v in MESES_LABELS.items() if v == mes_sel), None)
         if mes_key:
             df_filtered = df_filtered[df_filtered["MES_DENU"] == mes_key]
+
+    # Aplicar rango de fechas
+    if fecha_desde is not None and fecha_hasta is not None and "_fecha" in df_filtered.columns:
+        mask_fecha = df_filtered["_fecha"].apply(
+            lambda x: fecha_desde <= x <= fecha_hasta if x is not None else False
+        )
+        df_filtered = df_filtered[mask_fecha]
 
     if delito_sel != "Todos":
         df_filtered = df_filtered[df_filtered["DELITO"] == delito_sel]

@@ -99,6 +99,25 @@ def extraer_anio_mes(fecha_str: str) -> tuple[Optional[int], Optional[int]]:
     return None, None
 
 
+def extraer_fecha(fecha_str: str):
+    """
+    Extrae un datetime.date de un string "dia DD-MM-YYYY" o "DD-MM-YYYY".
+    Devuelve None si no es parseable.
+    """
+    import datetime
+    if pd.isna(fecha_str):
+        return None
+    fecha_str = str(fecha_str).strip()
+    match = re.search(r"(\d{1,2})[-/](\d{1,2})[-/](\d{4})", fecha_str)
+    if match:
+        dia, mes, anio = int(match.group(1)), int(match.group(2)), int(match.group(3))
+        try:
+            return datetime.date(anio, mes, dia)
+        except ValueError:
+            return None
+    return None
+
+
 # -------------------------------------------------------------------
 # Clase principal de carga
 # -------------------------------------------------------------------
@@ -231,6 +250,8 @@ class ShapefileLoader:
             parsed = df["FECHA_HECH"].apply(extraer_anio_mes)
             df["_anio"] = parsed.apply(lambda x: x[0])
             df["_mes_num"] = parsed.apply(lambda x: x[1])
+            # Columna de fecha completa para filtro por rango de días
+            df["_fecha"] = df["FECHA_HECH"].apply(extraer_fecha)
 
         # --- Limpiar coordenadas ---
         for col in ["X", "Y"]:
