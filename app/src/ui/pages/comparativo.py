@@ -13,13 +13,15 @@ def render():
     st.markdown("Comparación de delitos entre dos años seleccionados")
 
     df = cargar_datos()
-    # Aplicar filtros globales (UR, comisaría, delito, modus) al comparativo
-    df_filtered = render_filtros_sidebar(df)
+    # Aplicar filtros globales (UR, comisaría, delito, modus) al comparativo.
+    # Excluimos Año y Rango de Fechas del sidebar porque la comparación
+    # requiere datos de ambos años seleccionados más abajo.
+    df_filtered = render_filtros_sidebar(df, excluir={"anio", "fecha_rango"})
     engine = get_engine(df_filtered)
     charts = ChartGenerator()
 
     # ---- Selección de años ----
-    anios = sorted(df["_anio"].dropna().unique().astype(int).tolist())
+    anios = sorted(df_filtered["_anio"].dropna().unique().astype(int).tolist())
 
     if len(anios) < 2:
         st.warning("Se necesitan al menos 2 años de datos para hacer comparativos.")

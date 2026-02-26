@@ -229,19 +229,34 @@ def _fallback_label(code: str, ur_code: str | None) -> str:
 # Filtros del sidebar
 # ====================================================================
 
-def render_filtros_sidebar(df: pd.DataFrame) -> pd.DataFrame:
+def render_filtros_sidebar(
+    df: pd.DataFrame,
+    excluir: set[str] | None = None,
+) -> pd.DataFrame:
     """
     Renderiza filtros globales en el sidebar y devuelve el DataFrame filtrado.
     Incluye: Año, Unidad Regional, Comisaría/Jurisdicción (dinámica), Mes,
     Tipo de Delito y Modus Operandi.
+
+    Parameters
+    ----------
+    excluir : set[str] | None
+        Conjunto de filtros a omitir.  Claves válidas:
+        ``"anio"`` — no muestra ni aplica filtro de Año.
+        ``"fecha_rango"`` — no muestra ni aplica Desde / Hasta.
     """
+    _excluir: set[str] = excluir or set()
+
     with st.sidebar:
         st.markdown("### 🎯 Filtros")
 
         # ---- Filtro de Año ----
-        anios = sorted(df["_anio"].dropna().unique().astype(int).tolist())
-        if anios:
-            anio_sel = st.selectbox("Año", ["Todos"] + anios, index=0)
+        if "anio" not in _excluir:
+            anios = sorted(df["_anio"].dropna().unique().astype(int).tolist())
+            if anios:
+                anio_sel = st.selectbox("Año", ["Todos"] + anios, index=0)
+            else:
+                anio_sel = "Todos"
         else:
             anio_sel = "Todos"
 
@@ -270,7 +285,11 @@ def render_filtros_sidebar(df: pd.DataFrame) -> pd.DataFrame:
 
         # ---- Filtro de Rango de Fechas (Desde / Hasta) ----
         # Determinar rango por defecto según Año y Mes seleccionados
-        _has_fecha = "_fecha" in df.columns and df["_fecha"].notna().any()
+        _has_fecha = (
+            "fecha_rango" not in _excluir
+            and "_fecha" in df.columns
+            and df["_fecha"].notna().any()
+        )
         if _has_fecha:
             _fecha_min = df["_fecha"].dropna().min()
             _fecha_max = df["_fecha"].dropna().max()
