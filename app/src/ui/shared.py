@@ -335,11 +335,16 @@ def render_filtros_sidebar(
             fecha_desde = None
             fecha_hasta = None
 
-        # ---- Filtro de Delito ----
+        # ---- Filtro de Delito (multiselect) ----
         delitos = sorted(df["DELITO"].dropna().unique().tolist())
-        delito_sel = st.selectbox("Tipo de Delito", ["Todos"] + delitos, index=0)
+        delito_sel = st.multiselect(
+            "Tipo de Delito",
+            options=delitos,
+            default=[],
+            placeholder="Todos",
+        )
 
-        # ---- Filtro de Modus Operandi ----
+        # ---- Filtro de Modus Operandi (multiselect) ----
         modus_set: set[str] = set()
         for val in df["MODUS_OPER"].dropna().unique():
             for m in parse_curly_braces(str(val)):
@@ -348,8 +353,13 @@ def render_filtros_sidebar(
                     modus_set.add(clean)
         modus_list = sorted(modus_set)
         modus_labels = {m: m.replace("_", " ").title() for m in modus_list}
-        modus_display = ["Todos"] + [modus_labels[m] for m in modus_list]
-        modus_sel = st.selectbox("Modus Operandi", modus_display, index=0)
+        modus_display = [modus_labels[m] for m in modus_list]
+        modus_sel = st.multiselect(
+            "Modus Operandi",
+            options=modus_display,
+            default=[],
+            placeholder="Todos",
+        )
 
     # ================================================================
     # Aplicar filtros
@@ -387,16 +397,19 @@ def render_filtros_sidebar(
         )
         df_filtered = df_filtered[mask_fecha]
 
-    if delito_sel != "Todos":
-        df_filtered = df_filtered[df_filtered["DELITO"] == delito_sel]
+    if delito_sel:  # lista no vacía → filtrar
+        df_filtered = df_filtered[df_filtered["DELITO"].isin(delito_sel)]
 
-    if modus_sel != "Todos":
-        modus_key = next(
-            (k for k, v in modus_labels.items() if v == modus_sel), None
-        )
-        if modus_key:
+    if modus_sel:  # lista no vacía → filtrar
+        # Convertir labels seleccionados de vuelta a claves internas
+        modus_keys_sel = [
+            k for k, v in modus_labels.items() if v in modus_sel
+        ]
+        if modus_keys_sel:
+            modus_keys_set = set(modus_keys_sel)
             mask = df_filtered["MODUS_OPER"].apply(
-                lambda x: modus_key in parse_curly_braces(str(x)) if pd.notna(x) else False
+                lambda x: bool(modus_keys_set & set(parse_curly_braces(str(x))))
+                if pd.notna(x) else False
             )
             df_filtered = df_filtered[mask]
 

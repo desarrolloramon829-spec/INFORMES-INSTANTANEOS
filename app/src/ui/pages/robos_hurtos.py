@@ -1,0 +1,285 @@
+"""
+Página: Robos y Hurtos por Regional.
+Cuadro resumen de robos y hurtos desglosado por comisaría
+para cada Unidad Regional (Capital, Norte, Este, Oeste, Sur).
+"""
+from __future__ import annotations
+
+import re
+import unicodedata
+
+import streamlit as st
+import pandas as pd
+
+from app.src.ui.shared import (
+    cargar_datos,
+    get_engine,
+    render_filtros_sidebar,
+    mostrar_metricas_header,
+    _normalize,
+    _build_juris_match,
+)
+from app.config.settings import (
+    COMISARIAS_POR_REGION,
+    UNIDADES_REGIONALES,
+)
+
+# ====================================================================
+# Clasificación de delitos en ROBOS / HURTOS
+# ====================================================================
+
+_DELITOS_ROBO = {
+    "010-ROBO",
+    "020-TENTATIVAS_DE_ROBO",
+    "030-ROBO_AGRAVADO",
+    "040-TENTATIVA_DE_ROBO_AGRAVADO",
+    "ROBO",
+}
+
+_DELITOS_HURTO = {
+    "050-HURTO",
+    "060-TENTATIVA_DE_HURTO",
+    "HURTO",
+}
+
+# Orden de visualización de las URs (coincide con las imágenes de referencia)
+_UR_ORDEN = [
+    ("URC", "UNIDAD REGIONAL CAPITAL"),
+    ("URN", "UNIDAD REGIONAL NORTE"),
+    ("URE", "UNIDAD REGIONAL ESTE"),
+    ("URO", "UNIDAD REGIONAL OESTE"),
+    ("URS", "UNIDAD REGIONAL SUR"),
+]
+
+
+# ====================================================================
+# Helpers
+# ====================================================================
+
+def _limpiar_nombre_comisaria(nombre: str) -> str:
+    """
+    Genera un nombre corto y legible para la tabla.
+    Ej: 'Comisaria 1a' → 'COMISARIA 1°'
+         'Cria. Yerba Buena' → 'YERBA BUENA'
+         'Sub. Cria. Alto Verde' → 'ALTO VERDE'
+         '[URC] Comisaria 1a' → 'COMISARIA 1°'
+    """
+    s = nombre.strip()
+    # Quitar prefijo [UR] si existe
+    s = re.sub(r"^\[.*?\]\s*", "", s)
+
+    # Comisarías de Capital: "Comisaria Xa" → "COMISARIA X°"
+    m = re.match(r"(?i)comisaria\s+(\d+)\s*a?$", s)
+    if m:
+        return f"COMISARIA {m.group(1)}°"
+
+    # Quitar prefijos institucionales para las demás
+    for pfx in (
+        "Sub. Cria. de ", "Sub Cria. de ", "Sub.Cria. de ",
+        "Sub. Cria. ", "Sub Cria. ", "Sub.Cria. ",
+        "Cria. de ", "Cria. ",
+        "Dest. ",
+    ):
+        if s.lower().startswith(pfx.lower()):
+            s = s[len(pfx):]
+            break
+
+    return s.upper().strip()
+
+
+def _construir_tabla_regional(
+    df: pd.DataFrame,
+    ur_code: str,
+) -> pd.DataFrame:
+    """
+    Construye un DataFrame con columnas [COMISARIAS, ROBOS, HURTOS, TOTAL]
+    para una Unidad Regional dada.
+    """
+    # 1) Filtrar registros de esta UR
+    df_ur = df[
+        (df["_unidad_regional"] == ur_code)
+        | (df["JURIS_HECH"].str.startswith(ur_code + "_", na=False))
+    ].copy()
+
+    # 2) Clasificar cada registro
+    df_ur["_es_robo"] = df_ur["DELITO"].isin(_DELITOS_ROBO)
+    df_ur["_es_hurto"] = df_ur["DELITO"].isin(_DELITOS_HURTO)
+
+    # 3) Obtener mapeo display_name → juris_codes
+    display_names, juris_match_map = _build_juris_match(df, ur_code)
+
+    # 4) Construir filas
+    filas = []
+    for name in display_names:
+        codes = juris_match_map.get(name, [])
+        if not codes:
+            continue
+        mask = df_ur["JURIS_HECH"].isin(codes)
+        robos = int(df_ur.loc[mask, "_es_robo"].sum())
+        hurtos = int(df_ur.loc[mask, "_es_hurto"].sum())
+        filas.append({
+            "COMISARIAS": _limpiar_nombre_comisaria(name),
+            "ROBOS": robos,
+            "HURTOS": hurtos,
+            "TOTAL": robos + hurtos,
+        })
+
+    # Capturar registros sin match (fallback)
+    matched_codes = set()
+    for codes in juris_match_map.values():
+        matched_codes.update(codes)
+    unmatched = set(df_ur["JURIS_HECH"].dropna().unique()) - matched_codes
+    for code in sorted(unmatched):
+        mask = df_ur["JURIS_HECH"] == code
+        robos = int(df_ur.loc[mask, "_es_robo"].sum())
+        hurtos = int(df_ur.loc[mask, "_es_hurto"].sum())
+        if robos + hurtos > 0:
+            label = (
+                code.replace("_", " ")
+                .replace(f"{ur_code} ", "")
+                .title()
+            )
+            filas.append({
+                "COMISARIAS": label.upper(),
+                "ROBOS": robos,
+                "HURTOS": hurtos,
+                "TOTAL": robos + hurtos,
+            })
+
+    if not filas:
+        return pd.DataFrame(columns=["COMISARIAS", "ROBOS", "HURTOS", "TOTAL"])
+
+    tabla = pd.DataFrame(filas)
+    # Ordenar alfabéticamente por nombre de comisaría
+    tabla = tabla.sort_values("COMISARIAS", ignore_index=True)
+    return tabla
+
+
+def _generar_tabla_html(df: pd.DataFrame, titulo_ur: str) -> str:
+    """
+    Genera HTML de una tabla estilizada con encabezado azul oscuro
+    y fila de totales amarilla, idéntica al diseño de referencia.
+    Usa estilos inline en cada elemento para garantizar renderizado
+    correcto en Streamlit.
+    """
+    total_robos = int(df["ROBOS"].sum())
+    total_hurtos = int(df["HURTOS"].sum())
+    total_total = int(df["TOTAL"].sum())
+
+    rows_html = ""
+    for i, (_, row) in enumerate(df.iterrows()):
+        bg = "#161b27" if i % 2 == 0 else "#1e2535"
+        rows_html += (
+            f'<tr style="background-color:{bg};">'
+            f'<td style="padding:10px 14px;text-align:center;font-weight:bold;color:#e8e8e8;border-bottom:1px solid #2a2a3e;">{row["COMISARIAS"]}</td>'
+            f'<td style="padding:10px 14px;text-align:center;color:#e8e8e8;border-bottom:1px solid #2a2a3e;">{int(row["ROBOS"])}</td>'
+            f'<td style="padding:10px 14px;text-align:center;color:#e8e8e8;border-bottom:1px solid #2a2a3e;">{int(row["HURTOS"])}</td>'
+            f'<td style="padding:10px 14px;text-align:center;font-weight:bold;color:#e8e8e8;border-bottom:1px solid #2a2a3e;">{int(row["TOTAL"])}</td>'
+            f'</tr>'
+        )
+
+    # Fila TOTAL
+    rows_html += (
+        '<tr style="background-color:#FFFF00 !important;">'
+        '<td style="padding:10px 14px;text-align:center;font-weight:bold;color:#0e1117 !important;border-top:2px solid #CC0000;">TOTAL</td>'
+        f'<td style="padding:10px 14px;text-align:center;font-weight:bold;color:#0e1117 !important;border-top:2px solid #CC0000;">{total_robos}</td>'
+        f'<td style="padding:10px 14px;text-align:center;font-weight:bold;color:#0e1117 !important;border-top:2px solid #CC0000;">{total_hurtos}</td>'
+        f'<td style="padding:10px 14px;text-align:center;font-weight:bold;color:#0e1117 !important;border-top:2px solid #CC0000;">{total_total}</td>'
+        '</tr>'
+    )
+
+    html = (
+        f'<div style="margin-bottom:0;font-family:Segoe UI,Arial,sans-serif;background-color:#0e1117;">'
+        f'<div style="text-align:center;color:#ffffff;background-color:#1E3A5F;padding:14px 20px;border-radius:8px 8px 0 0;font-size:1.5rem;font-weight:bold;letter-spacing:1px;">{titulo_ur}</div>'
+        f'<table style="width:100%;border-collapse:collapse;font-size:0.9rem;background-color:#0e1117;border-radius:0 0 6px 6px;overflow:hidden;">'
+        f'<thead><tr style="background-color:#2a4a7f;">'
+        f'<th style="padding:10px 14px;text-align:center;color:#ffffff;min-width:180px;">COMISARIAS</th>'
+        f'<th style="padding:10px 14px;text-align:center;color:#ffffff;">ROBOS</th>'
+        f'<th style="padding:10px 14px;text-align:center;color:#ffffff;">HURTOS</th>'
+        f'<th style="padding:10px 14px;text-align:center;color:#ffffff;">TOTAL</th>'
+        f'</tr></thead>'
+        f'<tbody>{rows_html}</tbody>'
+        f'</table></div>'
+    )
+    return html
+
+
+# ====================================================================
+# Render principal
+# ====================================================================
+
+def render():
+    st.title("🔫 Robos y Hurtos por Regional")
+    st.markdown(
+        "Cuadro resumen de **Robos** y **Hurtos** desglosado por comisaría "
+        "para cada Unidad Regional."
+    )
+
+    df = cargar_datos()
+    df_filtered = render_filtros_sidebar(df)
+    engine = get_engine(df_filtered)
+
+    mostrar_metricas_header(engine)
+    st.divider()
+
+    # Filtrar solo robos y hurtos
+    delitos_rh = _DELITOS_ROBO | _DELITOS_HURTO
+    df_rh = df_filtered[df_filtered["DELITO"].isin(delitos_rh)].copy()
+
+    if len(df_rh) == 0:
+        st.warning("No hay datos de robos ni hurtos para los filtros seleccionados.")
+        return
+
+    # Métricas rápidas de Robos vs Hurtos
+    total_robos = int(df_rh["DELITO"].isin(_DELITOS_ROBO).sum())
+    total_hurtos = int(df_rh["DELITO"].isin(_DELITOS_HURTO).sum())
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Total Robos", f"{total_robos:,}")
+    c2.metric("Total Hurtos", f"{total_hurtos:,}")
+    c3.metric("Total General", f"{total_robos + total_hurtos:,}")
+
+    st.divider()
+
+    # Determinar qué URs mostrar según el filtro de UR del sidebar
+    urs_en_datos = set(df_rh["_unidad_regional"].dropna().unique())
+
+    # Generar tablas por cada UR
+    tablas_csv = []
+
+    for ur_code, titulo_ur in _UR_ORDEN:
+        if ur_code not in urs_en_datos:
+            # Verificar si hay registros con JURIS_HECH que empiece con este código
+            tiene_juris = df_rh["JURIS_HECH"].str.startswith(
+                ur_code + "_", na=False
+            ).any()
+            if not tiene_juris:
+                continue
+
+        tabla = _construir_tabla_regional(df_rh, ur_code)
+        if len(tabla) == 0:
+            continue
+
+        html = _generar_tabla_html(tabla, titulo_ur)
+        # Calcular altura: título(50) + encabezado(40) + filas(38 c/u) + total(42) + margen(20)
+        altura = 50 + 40 + len(tabla) * 38 + 42 + 20
+        st.components.v1.html(html, height=altura, scrolling=False)
+
+        # Acumular para CSV
+        tabla_export = tabla.copy()
+        tabla_export.insert(0, "UNIDAD_REGIONAL", titulo_ur)
+        tablas_csv.append(tabla_export)
+
+    # ---- Exportar ----
+    if tablas_csv:
+        st.divider()
+        st.markdown("### 📥 Exportar Datos")
+        df_export = pd.concat(tablas_csv, ignore_index=True)
+        # Agregar fila total por UR
+        csv = df_export.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            "⬇️ Descargar Robos y Hurtos (CSV)",
+            data=csv,
+            file_name="robos_y_hurtos_por_regional.csv",
+            mime="text/csv",
+        )

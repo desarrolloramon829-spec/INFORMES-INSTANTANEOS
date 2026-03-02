@@ -65,7 +65,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-from app.src.ui.pages import home, delitos, temporal, caracteristicas, geografico, comparativo
+from app.src.ui.pages import home, delitos, temporal, caracteristicas, geografico, comparativo, robos_hurtos
 
 
 # ====================================================================
@@ -89,6 +89,7 @@ def render_sidebar():
             [
                 "🏠 Inicio",
                 "📋 Delitos por Modalidad",
+                "🔫 Robos y Hurtos",
                 "📅 Análisis Temporal",
                 "🔍 Características",
                 "🗺️ Análisis Geográfico",
@@ -114,6 +115,8 @@ def main():
         home.render()
     elif "Delitos por Modalidad" in pagina:
         delitos.render()
+    elif "Robos y Hurtos" in pagina:
+        robos_hurtos.render()
     elif "Análisis Temporal" in pagina:
         temporal.render()
     elif "Características" in pagina:
