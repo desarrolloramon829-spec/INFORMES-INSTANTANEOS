@@ -134,11 +134,56 @@ class StatsEngine:
 
     # ---- Informe 6.1: Delitos por Modalidad ----
     def delitos_por_modalidad(self) -> pd.DataFrame:
-        """Tabla de conteo por tipo de delito."""
+        """Tabla de conteo por tipo de delito (solo DELITO, para resúmenes)."""
         return _conteo_simple(
             self.df, "DELITO",
             labels=DELITO_CATEGORIAS,
         )
+
+    def delitos_con_modus_operandi(self) -> pd.DataFrame:
+        """Tabla de conteo por tipo de delito + modus operandi combinados."""
+        if "DELITO" not in self.df.columns:
+            return pd.DataFrame()
+
+        df_clean = self.df.dropna(subset=["DELITO"]).copy()
+
+        # Normalizar modus operandi
+        _basura_modus = {"", "NULL", "null", "None", "zzz", "#NO_CONSTA", "NO CONSTA", "NO_CONSTA"}
+        if "MODUS_OPER" in df_clean.columns:
+            df_clean["modus_clean"] = (
+                df_clean["MODUS_OPER"]
+                .fillna("No consta")
+                .astype(str)
+                .str.strip()
+                .replace({v: "No consta" for v in _basura_modus})
+            )
+        else:
+            df_clean["modus_clean"] = "No consta"
+
+        # Etiqueta legible del delito
+        df_clean["delito_label"] = (
+            df_clean["DELITO"].map(DELITO_CATEGORIAS).fillna(df_clean["DELITO"])
+        )
+
+        # Agrupar por (delito, modus)
+        conteo = (
+            df_clean.groupby(["delito_label", "modus_clean"])
+            .size()
+            .reset_index(name="cantidad")
+            .sort_values("cantidad", ascending=False)
+            .reset_index(drop=True)
+        )
+
+        total = conteo["cantidad"].sum()
+        conteo["porcentaje"] = (
+            (conteo["cantidad"] / total * 100).round(2) if total > 0 else 0.0
+        )
+        # Columna combinada para gráficos
+        conteo["categoria_label"] = conteo["delito_label"] + " — " + conteo["modus_clean"]
+        conteo["categoria"] = conteo["categoria_label"]
+        conteo["total"] = total
+
+        return conteo
 
     # ---- Informe 6.2: Delitos por Día de la Semana ----
     def delitos_por_dia_semana(self) -> pd.DataFrame:
@@ -227,16 +272,25 @@ class StatsEngine:
 
     # ---- Informe: Delitos por Año ----
     def delitos_por_anio(self) -> pd.DataFrame:
-        """Conteo de delitos agrupados por año."""
+        """Conteo de delitos agrupados por año, incluyendo registros sin fecha."""
         series = self.df["_anio"].dropna().astype(int)
         conteo = series.value_counts().sort_index()
+        # Agregar registros sin fecha como categoría visible
+        sin_fecha = int(self.df["_anio"].isna().sum())
+        if sin_fecha > 0:
+            conteo = pd.concat([conteo, pd.Series({0: sin_fecha})])
         total = conteo.sum()
-        return pd.DataFrame({
+        result = pd.DataFrame({
             "categoria": conteo.index,
             "cantidad": conteo.values,
             "porcentaje": (conteo.values / total * 100).round(2) if total > 0 else 0,
             "total": total,
         })
+        # Renombrar año 0 a "Sin Fecha" para display
+        result["categoria_label"] = result["categoria"].apply(
+            lambda x: "Sin Fecha" if x == 0 else str(int(x))
+        )
+        return result
 
     # ====================================================================
     # Comparativos entre períodos

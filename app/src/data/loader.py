@@ -30,7 +30,11 @@ from app.config.shapefile_registry import (
 logger = logging.getLogger(__name__)
 
 # Encodings que acepta QGIS 2.14 / dBASE IV
-_ENCODINGS = ["utf-8", "latin1", "cp1252", "iso-8859-1"]
+# Orden: utf-8 primero; latin1 al final porque nunca lanza excepción.
+_ENCODINGS = ["utf-8", "cp1252", "iso-8859-1", "latin1"]
+
+# Secuencias mojibake comunes de UTF-8 leído como latin1
+_MOJIBAKE_PATTERNS = ["Ã©", "Ã¡", "Ã±", "Ã³", "Ã\xad", "Ã¼", "Ã\x89"]
 
 # Columnas comunes a los 4 esquemas detectados (49 campos)
 COLUMNAS_COMUNES = [
@@ -157,6 +161,13 @@ class ShapefileLoader:
                 gdf = gpd.read_file(full_path, encoding=enc)
                 # Eliminar geometría, trabajar con DataFrame plano
                 df = pd.DataFrame(gdf.drop(columns="geometry", errors="ignore"))
+                # Verificar mojibake: si hay secuencias corruptas, probar otro encoding
+                sample_text = " ".join(
+                    df.select_dtypes(include="object").head(50).fillna("").values.flatten()
+                )
+                if any(pat in sample_text for pat in _MOJIBAKE_PATTERNS):
+                    logger.debug("Mojibake detectado con encoding '%s' en %s, probando otro.", enc, key)
+                    continue
                 df["_shapefile_key"] = key
                 df["_unidad_regional"] = get_ur_from_key(key)
                 return df
@@ -214,17 +225,21 @@ class ShapefileLoader:
         """Limpia valores basura y normaliza campos clave."""
         df = df.copy()
 
-        # --- FRANJA HORARIA: mantener solo valores válidos ---
+        # --- FRANJA HORARIA: mantener solo valores válidos; inválidos → SIN_DATOS ---
         if "FRAN_HORAR" in df.columns:
-            df["FRAN_HORAR"] = df["FRAN_HORAR"].apply(
-                lambda x: x if (pd.notna(x) and str(x).strip() in FRANJAS_HORARIAS) else None
-            )
+            def _norm_franja(x):
+                if pd.notna(x) and str(x).strip() in FRANJAS_HORARIAS:
+                    return str(x).strip()
+                return "SIN_DATOS"
+            df["FRAN_HORAR"] = df["FRAN_HORAR"].apply(_norm_franja)
 
-        # --- DIA HECHO: normalizar ---
+        # --- DIA HECHO: normalizar; inválidos → sin_datos ---
         if "DIA_HECHO" in df.columns:
-            df["DIA_HECHO"] = df["DIA_HECHO"].apply(
-                lambda x: str(x).strip().lower() if pd.notna(x) and str(x).strip().lower() in DIAS_SEMANA else None
-            )
+            def _norm_dia(x):
+                if pd.notna(x) and str(x).strip().lower() in DIAS_SEMANA:
+                    return str(x).strip().lower()
+                return "sin_datos"
+            df["DIA_HECHO"] = df["DIA_HECHO"].apply(_norm_dia)
 
         # --- MES: normalizar ---
         if "MES_DENU" in df.columns:
@@ -239,11 +254,21 @@ class ShapefileLoader:
                 lambda x: str(x).strip().upper() if (pd.notna(x) and str(x).strip().upper() in valid_resuelto) else None
             )
 
-        # --- DELITO: normalizar duplicados ---
+        # --- DELITO: normalizar duplicados y unificar variantes sin prefijo ---
+        _DELITO_NORM = {
+            "ROBO": "010-ROBO",
+            "HURTO": "050-HURTO",
+            "ESTAFA": "160-ESTAFA",
+        }
         if "DELITO" in df.columns:
-            df["DELITO"] = df["DELITO"].apply(
-                lambda x: str(x).strip() if pd.notna(x) and str(x).strip() not in VALORES_BASURA else None
-            )
+            def _normalizar_delito(x):
+                if pd.isna(x):
+                    return None
+                v = str(x).strip()
+                if v in VALORES_BASURA:
+                    return None
+                return _DELITO_NORM.get(v, v)
+            df["DELITO"] = df["DELITO"].apply(_normalizar_delito)
 
         # --- Extraer Año y Mes numérico de FECHA_HECH ---
         if "FECHA_HECH" in df.columns:
@@ -302,10 +327,29 @@ class ShapefileLoader:
             progress_callback(100, f"Carga completa: {len(combined):,} registros")
 
         self._cache = combined
+
+        # --- Diagnóstico de carga ---
+        n = len(combined)
+        sin_fecha = int(combined["_anio"].isna().sum()) if "_anio" in combined.columns else 0
+        sin_franja = int((combined["FRAN_HORAR"] == "SIN_DATOS").sum()) if "FRAN_HORAR" in combined.columns else 0
+        sin_dia = int((combined["DIA_HECHO"] == "sin_datos").sum()) if "DIA_HECHO" in combined.columns else 0
         logger.info(
             "Cargados %d registros de %d/%d shapefiles",
-            len(combined), len(frames), total,
+            n, len(frames), total,
         )
+        logger.info(
+            "Diagnóstico: sin_fecha=%d (%.1f%%), sin_franja=%d (%.1f%%), sin_dia=%d (%.1f%%)",
+            sin_fecha, (sin_fecha / n * 100) if n else 0,
+            sin_franja, (sin_franja / n * 100) if n else 0,
+            sin_dia, (sin_dia / n * 100) if n else 0,
+        )
+        if "_unidad_regional" in combined.columns:
+            dist_ur = combined["_unidad_regional"].value_counts().to_dict()
+            logger.info("Distribución UR: %s", dist_ur)
+        if "DELITO" in combined.columns:
+            delitos_unicos = sorted(combined["DELITO"].dropna().unique().tolist())
+            logger.info("Valores DELITO únicos (%d): %s", len(delitos_unicos), delitos_unicos)
+
         return combined
 
     def cargar_por_ur(self, ur: str) -> pd.DataFrame:

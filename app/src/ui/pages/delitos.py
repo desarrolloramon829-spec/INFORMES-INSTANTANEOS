@@ -21,7 +21,7 @@ def render():
     st.divider()
 
     # ---- Tabla de datos ----
-    df_modal = engine.delitos_por_modalidad()
+    df_modal = engine.delitos_con_modus_operandi()
 
     if len(df_modal) == 0:
         st.warning("No hay datos para los filtros seleccionados.")
@@ -90,15 +90,18 @@ def render():
 
 
 def _generar_tabla_html(df) -> str:
-    """Genera tabla HTML estilizada tipo Power BI."""
+    """Genera tabla HTML estilizada tipo Power BI con Delito + Modus Operandi."""
     rows = ""
     total_cant = df["cantidad"].sum()
     total_pct = 100.0
 
     for _, row in df.iterrows():
+        delito = row.get('delito_label', row.get('categoria_label', ''))
+        modus = row.get('modus_clean', '')
         rows += f"""
         <tr>
-            <td style="text-align:left; font-weight:500;">{row['categoria_label']}</td>
+            <td style="text-align:left; font-weight:500;">{delito}</td>
+            <td style="text-align:left; color:#a0c4ff;">{modus}</td>
             <td>{int(row['cantidad']):,}</td>
             <td>{row['porcentaje']:.1f}%</td>
         </tr>"""
@@ -106,6 +109,7 @@ def _generar_tabla_html(df) -> str:
     rows += f"""
     <tr class="total-row">
         <td style="text-align:left; font-weight:bold;">TOTAL</td>
+        <td></td>
         <td><b>{int(total_cant):,}</b></td>
         <td><b>{total_pct:.1f}%</b></td>
     </tr>"""
@@ -114,7 +118,8 @@ def _generar_tabla_html(df) -> str:
     <table class="styled-table">
         <thead>
             <tr>
-                <th style="text-align:left;">Modalidad</th>
+                <th style="text-align:left;">Delito</th>
+                <th style="text-align:left;">Modus Operandi</th>
                 <th>Cantidad</th>
                 <th>Porcentaje</th>
             </tr>

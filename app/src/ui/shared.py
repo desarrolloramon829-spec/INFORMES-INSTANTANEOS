@@ -370,11 +370,11 @@ def render_filtros_sidebar(
         df_filtered = df_filtered[df_filtered["_anio"] == int(anio_sel)]
 
     if ur_code:
-        # Incluir registros de la UR + registros ESPECIALES cuya jurisdicción
-        # pertenece a esta UR (ej. CARGA_FINCAS con JURIS_HECH=URC_COMISARIA__1)
+        # Filtrar SOLO por la UR seleccionada.
+        # Los registros ESPECIALES (CARGA_FINCAS/ABIGEATO) quedan excluidos
+        # para evitar doble conteo; solo son visibles con "Todas" o "ESPECIAL".
         df_filtered = df_filtered[
-            (df_filtered["_unidad_regional"] == ur_code)
-            | (df_filtered["JURIS_HECH"].str.startswith(ur_code + "_", na=False))
+            df_filtered["_unidad_regional"] == ur_code
         ]
 
     if juris_sel != "Todas":

@@ -89,6 +89,7 @@ FRANJAS_HORARIAS = [
     "SIESTA_(13:00-16:59)",
     "TARDE_(17:00-19:59)",
     "NOCHE_(20:00-23:59)",
+    "SIN_DATOS",
 ]
 
 FRANJAS_LABELS = {
@@ -98,12 +99,13 @@ FRANJAS_LABELS = {
     "SIESTA_(13:00-16:59)": "Siesta\n13:00 - 16:59",
     "TARDE_(17:00-19:59)": "Tarde\n17:00 - 19:59",
     "NOCHE_(20:00-23:59)": "Noche\n20:00 - 23:59",
+    "SIN_DATOS": "Sin Datos",
 }
 
 # ============================================================
 # DÍAS DE LA SEMANA (orden correcto)
 # ============================================================
-DIAS_SEMANA = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
+DIAS_SEMANA = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo", "sin_datos"]
 DIAS_LABELS = {
     "lunes": "Lunes",
     "martes": "Martes",
@@ -112,6 +114,7 @@ DIAS_LABELS = {
     "viernes": "Viernes",
     "sabado": "Sábado",
     "domingo": "Domingo",
+    "sin_datos": "Sin Datos",
 }
 
 # ============================================================
@@ -154,9 +157,6 @@ DELITO_CATEGORIAS = {
     "120-HALLAZGO": "Hallazgo",
     "160-ESTAFA": "Estafa",
     "170-TENTATIVA_DE_ESTAFA": "Tent. de Estafa",
-    "ROBO": "Robo",
-    "HURTO": "Hurto",
-    "ESTAFA": "Estafa",
     "#NO_CONSTA": "No Consta",
     "NO CONSTA": "No Consta",
 }
