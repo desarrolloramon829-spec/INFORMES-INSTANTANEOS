@@ -104,11 +104,25 @@ def render():
         tab_barras, tab_vertical, tab_dona = st.tabs(["📊 Barras", "📈 Verticales", "🍩 Dona"])
 
         with tab_barras:
+            max_modalidades_barras = max(5, min(len(df_modal), 40))
+            default_modalidades_barras = min(15, max_modalidades_barras)
+            top_modalidades_barras = st.slider(
+                "Modalidades visibles en barras",
+                min_value=5,
+                max_value=max_modalidades_barras,
+                value=default_modalidades_barras,
+                key="top_modalidades_barras_delitos",
+            )
+            df_modal_barras = df_modal.head(top_modalidades_barras).copy()
             fig = charts.barras_horizontal(
-                df_modal,
+                df_modal_barras,
                 "Delitos por Modalidad",
             )
             st.plotly_chart(fig, use_container_width=True)
+            if len(df_modal) > len(df_modal_barras):
+                st.caption(
+                    f"Se muestran las {len(df_modal_barras)} modalidades con mayor volumen. El detalle completo sigue disponible en la tabla de la izquierda y en la exportación CSV."
+                )
 
         with tab_vertical:
             max_modalidades_detalle = max(5, min(len(df_modalidades_operativas_full), 120))
@@ -144,7 +158,7 @@ def render():
                     display_detalle,
                     hide_index=True,
                     use_container_width=True,
-                    height=min(len(display_detalle) * 35 + 40, 520),
+                    height=max(len(display_detalle) * 35 + 40, 420),
                 )
             else:
                 st.info("Sin datos suficientes para graficar modalidades específicas.")

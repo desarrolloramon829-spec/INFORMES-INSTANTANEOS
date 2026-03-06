@@ -330,36 +330,41 @@ def render():
     )
 
     df_resumen = _resumen_robos_hurtos(total_robos, total_hurtos)
+    col_ctrl1, col_ctrl2 = st.columns([1.2, 0.8])
+    with col_ctrl1:
+        ur_selector = st.selectbox(
+            "Regional a visualizar",
+            ["Todas"] + urs_disponibles,
+            format_func=lambda code: "Todas las regionales" if code == "Todas" else dict(_UR_ORDEN).get(code, code),
+            key="robos_hurtos_ur_selector",
+        )
+    with col_ctrl2:
+        top_n = st.slider(
+            "Comisarías visibles",
+            min_value=5,
+            max_value=20,
+            value=10,
+            key="robos_hurtos_top_n",
+        )
+
+    df_chart = _ranking_comisarias_robos_hurtos(
+        df_rh,
+        ur_code=None if ur_selector == "Todas" else ur_selector,
+        top_n=top_n,
+    )
+    shared_chart_height = max(420, min(920, 220 + top_n * 28))
+
     col_chart_left, col_chart_right = st.columns([0.9, 1.6])
 
     with col_chart_left:
-        fig = charts.dona(df_resumen, "Participación global de robos y hurtos")
+        fig = charts.dona(
+            df_resumen,
+            "Participación global de robos y hurtos",
+            height=shared_chart_height,
+        )
         st.plotly_chart(fig, use_container_width=True)
 
     with col_chart_right:
-        col_ctrl1, col_ctrl2 = st.columns([1.4, 1])
-        with col_ctrl1:
-            ur_selector = st.selectbox(
-                "Regional a visualizar",
-                ["Todas"] + urs_disponibles,
-                format_func=lambda code: "Todas las regionales" if code == "Todas" else dict(_UR_ORDEN).get(code, code),
-                key="robos_hurtos_ur_selector",
-            )
-        with col_ctrl2:
-            top_n = st.slider(
-                "Comisarías visibles",
-                min_value=5,
-                max_value=20,
-                value=10,
-                key="robos_hurtos_top_n",
-            )
-
-        df_chart = _ranking_comisarias_robos_hurtos(
-            df_rh,
-            ur_code=None if ur_selector == "Todas" else ur_selector,
-            top_n=top_n,
-        )
-
         if len(df_chart) > 0:
             fig = charts.barras_horizontal_comparativo(
                 df_chart.iloc[::-1],
@@ -369,6 +374,7 @@ def render():
                 col_y2="HURTOS",
                 label_y1="Robos",
                 label_y2="Hurtos",
+                height=shared_chart_height,
             )
             st.plotly_chart(fig, use_container_width=True)
 

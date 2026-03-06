@@ -223,7 +223,7 @@ class ChartGenerator:
         col_cat: str = "categoria_label",
         col_val: str = "cantidad",
         col_pct: str = "porcentaje",
-        height: int = 450,
+        height: int | None = None,
         highlight_max: bool = True,
     ) -> go.Figure:
         """Gráfico de barras verticales con resaltado del valor máximo."""
@@ -232,7 +232,8 @@ class ChartGenerator:
         palette = _palette_by_chart(theme, "vertical")
         base_color = _resolve_default_color(color, palette[0])
         show_text = _should_show_text(len(df_plot), 12)
-        height = _adaptive_height(len(df_plot), base=260, per_item=18, minimum=360, maximum=760)
+        if height is None:
+            height = _adaptive_height(len(df_plot), base=260, per_item=18, minimum=360, maximum=760)
 
         colors = [base_color] * len(df_plot)
         if highlight_max and len(df_plot) > 0:
@@ -434,14 +435,15 @@ class ChartGenerator:
         col_y2: str = "cantidad_actual",
         label_y1: str = "Serie 1",
         label_y2: str = "Serie 2",
-        height: int = 520,
+        height: int | None = None,
     ) -> go.Figure:
         """Gráfico de barras horizontales agrupadas para comparar dos series."""
         theme = _get_active_theme()
         df_plot = df.copy()
         palette = _palette_by_chart(theme, "comparison")
         show_text = _should_show_text(len(df_plot), 12)
-        height = _adaptive_height(len(df_plot), base=230, per_item=28, minimum=380, maximum=940)
+        if height is None:
+            height = _adaptive_height(len(df_plot), base=230, per_item=28, minimum=380, maximum=940)
 
         fig = go.Figure()
 

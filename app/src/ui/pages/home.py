@@ -72,6 +72,14 @@ def _render_sequenced_panel(seq, kicker, titulo, cuerpo, tone=""):
     )
 
 
+def _wrap_franja_label(label):
+    text = str(label)
+    if " " not in text:
+        return text
+    tramo, resto = text.split(" ", 1)
+    return f"{tramo}<br>{resto}"
+
+
 def render():
     # Cargar y filtrar datos
     df = cargar_datos()
@@ -141,8 +149,10 @@ def render():
         st.markdown("### Modalidades con mayor presión")
         st.caption("Jerarquiza la composición delictual dominante dentro del universo filtrado vigente.")
         df_modal = engine.delitos_por_modalidad()
+        modal_chart_height = None
         if len(df_modal) > 0:
             fig = charts.barras_horizontal(df_modal, "Top Delitos por Modalidad")
+            modal_chart_height = fig.layout.height
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning("Sin datos para mostrar")
@@ -152,20 +162,30 @@ def render():
         st.caption("Expone qué días concentran mayor carga operativa para lectura ejecutiva rápida.")
         df_dia = engine.delitos_por_dia_semana()
         if len(df_dia) > 0:
-            fig = charts.barras_vertical(df_dia, "Delitos por Día")
+            fig = charts.barras_vertical(df_dia, "Delitos por Día", height=modal_chart_height)
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning("Sin datos para mostrar")
 
     col_left2, col_right2 = st.columns(2)
+    second_row_chart_height = 520
 
     with col_left2:
         st.markdown("### Ritmo por franja horaria")
         st.caption("Identifica las ventanas horarias donde la activación delictiva gana mayor intensidad.")
         df_franja = engine.delitos_por_franja_horaria()
         if len(df_franja) > 0:
-            fig = charts.barras_vertical(df_franja, "Distribución por Franja Horaria",
-                                          color="#ED7D31")
+            df_franja_plot = df_franja.copy()
+            if "categoria_label" in df_franja_plot.columns:
+                df_franja_plot["categoria_label"] = df_franja_plot["categoria_label"].apply(_wrap_franja_label)
+            fig = charts.barras_vertical(
+                df_franja_plot,
+                "Distribución por Franja Horaria",
+                color="#ED7D31",
+                height=second_row_chart_height,
+            )
+            fig.update_xaxes(tickangle=0)
+            fig.update_layout(margin=dict(b=120, t=78))
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning("Sin datos para mostrar")
@@ -175,7 +195,19 @@ def render():
         st.caption("Resume el reparto territorial del volumen observado para una lectura institucional de síntesis.")
         df_ur = engine.delitos_por_unidad_regional()
         if len(df_ur) > 0:
-            fig = charts.dona(df_ur, "Distribución por Unidad Regional")
+            fig = charts.dona(df_ur, "Distribución por Unidad Regional", height=second_row_chart_height)
+            fig.update_traces(textposition="inside", selector=dict(type="pie"))
+            fig.update_layout(
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.01,
+                    xanchor="center",
+                    x=0.5,
+                    font=dict(size=10),
+                ),
+                margin=dict(t=96, b=44, l=28, r=28),
+            )
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning("Sin datos para mostrar")
