@@ -5,6 +5,8 @@ necesarios para los 13 tipos de informe.
 """
 from __future__ import annotations
 
+from datetime import date, timedelta
+import re
 from typing import Optional
 import pandas as pd
 import numpy as np
@@ -109,6 +111,52 @@ def _conteo_multivalor(
 
     result["total"] = total
     return result
+
+
+def _pct_variacion(base: int, actual: int) -> float:
+    """Calcula la variación porcentual con la convención usada por la app."""
+    if base > 0:
+        return round(((actual - base) / base) * 100, 2)
+    return 100.0 if actual > 0 else 0.0
+
+
+def _label_jurisdiccion(valor: str) -> str:
+    """Genera un nombre corto y legible para una jurisdicción/comisaría."""
+    if pd.isna(valor):
+        return ""
+
+    s = str(valor).strip()
+    for pfx in ("URC_", "URE_", "URO_", "URS_", "URN_"):
+        if s.startswith(pfx):
+            s = s[len(pfx):]
+            break
+
+    s = (
+        s.replace("COMISARIA_DE_", "Comisaria ")
+         .replace("COMISARIA__", "Comisaria ")
+         .replace("COMISARIA_", "Comisaria ")
+         .replace("SUBCOMISARIA_DE_", "Sub. Cria. ")
+         .replace("SUBCOMISARIA_", "Sub. Cria. ")
+         .replace("DESTACAMENTO_", "Dest. ")
+         .replace("_", " ")
+         .strip()
+    )
+
+    match = re.match(r"(?i)^comisaria\s+(\d+)\s*a?$", s)
+    if match:
+        return f"COMISARIA {match.group(1)}°"
+
+    for prefijo in (
+        "Sub. Cria. de ", "Sub Cria. de ", "Sub.Cria. de ",
+        "Sub. Cria. ", "Sub Cria. ", "Sub.Cria. ",
+        "Cria. de ", "Cria. ",
+        "Dest. ",
+    ):
+        if s.lower().startswith(prefijo.lower()):
+            s = s[len(prefijo):]
+            break
+
+    return s.upper().strip()
 
 
 # ====================================================================
@@ -312,38 +360,106 @@ class StatsEngine:
         df_ant = self.df[self.df["_anio"] == anio_anterior]
         df_act = self.df[self.df["_anio"] == anio_actual]
 
-        conteo_ant = df_ant[campo].dropna().value_counts()
-        conteo_act = df_act[campo].dropna().value_counts()
+        return self._comparativo_entre_dataframes(df_act, df_ant, campo)
 
-        # Unificar categorías
-        categorias = sorted(set(conteo_ant.index) | set(conteo_act.index))
+    def comparativo_periodos_rango(
+        self,
+        fecha_actual_desde: date,
+        fecha_actual_hasta: date,
+        fecha_anterior_desde: date,
+        fecha_anterior_hasta: date,
+        campo: str = "DELITO",
+    ) -> pd.DataFrame:
+        """Compara conteos de un campo entre dos rangos de fechas."""
+        df_ant = self._filtrar_df_por_rango_fecha(fecha_anterior_desde, fecha_anterior_hasta)
+        df_act = self._filtrar_df_por_rango_fecha(fecha_actual_desde, fecha_actual_hasta)
 
-        result = pd.DataFrame({"categoria": categorias})
-        result["cantidad_anterior"] = result["categoria"].map(conteo_ant).fillna(0).astype(int)
-        result["cantidad_actual"] = result["categoria"].map(conteo_act).fillna(0).astype(int)
-        result["diferencia"] = result["cantidad_actual"] - result["cantidad_anterior"]
-        result["pct_variacion"] = np.where(
-            result["cantidad_anterior"] > 0,
-            ((result["diferencia"] / result["cantidad_anterior"]) * 100).round(2),
-            np.where(result["cantidad_actual"] > 0, 100.0, 0.0),
+        return self._comparativo_entre_dataframes(df_act, df_ant, campo)
+
+    def comparativo_diario_rango(
+        self,
+        fecha_actual_desde: date,
+        fecha_actual_hasta: date,
+        fecha_anterior_desde: date,
+        fecha_anterior_hasta: date,
+    ) -> pd.DataFrame:
+        """Compara dos rangos alineando la evolución por posición diaria."""
+        df_ant = self._filtrar_df_por_rango_fecha(fecha_anterior_desde, fecha_anterior_hasta)
+        df_act = self._filtrar_df_por_rango_fecha(fecha_actual_desde, fecha_actual_hasta)
+
+        dias_ant = max((fecha_anterior_hasta - fecha_anterior_desde).days + 1, 0)
+        dias_act = max((fecha_actual_hasta - fecha_actual_desde).days + 1, 0)
+        total_dias = max(dias_ant, dias_act)
+
+        resultado = []
+        for offset in range(total_dias):
+            fecha_ant = fecha_anterior_desde + timedelta(days=offset) if offset < dias_ant else None
+            fecha_act = fecha_actual_desde + timedelta(days=offset) if offset < dias_act else None
+
+            cant_ant = int((df_ant["_fecha"] == fecha_ant).sum()) if fecha_ant is not None else 0
+            cant_act = int((df_act["_fecha"] == fecha_act).sum()) if fecha_act is not None else 0
+            dif = cant_act - cant_ant
+
+            resultado.append({
+                "dia": offset + 1,
+                "dia_label": f"Día {offset + 1}",
+                "fecha_anterior": fecha_ant,
+                "fecha_anterior_label": fecha_ant.strftime("%d/%m/%Y") if fecha_ant else "-",
+                "fecha_actual": fecha_act,
+                "fecha_actual_label": fecha_act.strftime("%d/%m/%Y") if fecha_act else "-",
+                "cantidad_anterior": cant_ant,
+                "cantidad_actual": cant_act,
+                "diferencia": dif,
+                "pct_variacion": _pct_variacion(cant_ant, cant_act),
+            })
+
+        result = pd.DataFrame(resultado)
+        total_ant = int(result["cantidad_anterior"].sum()) if not result.empty else 0
+        total_act = int(result["cantidad_actual"].sum()) if not result.empty else 0
+        total = {
+            "dia": total_dias + 1,
+            "dia_label": "TOTAL",
+            "fecha_anterior": None,
+            "fecha_anterior_label": "-",
+            "fecha_actual": None,
+            "fecha_actual_label": "-",
+            "cantidad_anterior": total_ant,
+            "cantidad_actual": total_act,
+            "diferencia": total_act - total_ant,
+            "pct_variacion": _pct_variacion(total_ant, total_act),
+        }
+        return pd.concat([result, pd.DataFrame([total])], ignore_index=True)
+
+    def comparativo_comisarias_rango(
+        self,
+        fecha_actual_desde: date,
+        fecha_actual_hasta: date,
+        fecha_anterior_desde: date,
+        fecha_anterior_hasta: date,
+    ) -> pd.DataFrame:
+        """Compara los totales de hechos por comisaría entre dos rangos."""
+        result = self.comparativo_periodos_rango(
+            fecha_actual_desde,
+            fecha_actual_hasta,
+            fecha_anterior_desde,
+            fecha_anterior_hasta,
+            "JURIS_HECH",
         )
 
-        # Totales
-        result.loc[len(result)] = [
-            "TOTAL",
-            result["cantidad_anterior"].sum(),
-            result["cantidad_actual"].sum(),
-            result["diferencia"].sum(),
-            None,
-        ]
-        total_ant = result.iloc[-1]["cantidad_anterior"]
-        total_act = result.iloc[-1]["cantidad_actual"]
-        if total_ant > 0:
-            result.at[result.index[-1], "pct_variacion"] = round(
-                (total_act - total_ant) / total_ant * 100, 2
-            )
+        if result.empty:
+            return result
 
-        return result
+        detalle = result[result["categoria"] != "TOTAL"].copy()
+        detalle["categoria_label"] = detalle["categoria"].apply(_label_jurisdiccion)
+        detalle = detalle.sort_values(
+            by=["cantidad_actual", "cantidad_anterior", "categoria_label"],
+            ascending=[False, False, True],
+            ignore_index=True,
+        )
+
+        total = result[result["categoria"] == "TOTAL"].copy()
+        total["categoria_label"] = "TOTAL"
+        return pd.concat([detalle, total], ignore_index=True)
 
     def comparativo_mensual(
         self,
@@ -400,6 +516,8 @@ class StatsEngine:
         ur: Optional[str] = None,
         delito: Optional[str] = None,
         jurisdiccion: Optional[str] = None,
+        fecha_desde: Optional[date] = None,
+        fecha_hasta: Optional[date] = None,
     ) -> "StatsEngine":
         """
         Devuelve un nuevo StatsEngine con el DataFrame filtrado.
@@ -418,7 +536,54 @@ class StatsEngine:
             df = df[df["DELITO"] == delito]
         if jurisdiccion is not None:
             df = df[df["JURIS_HECH"] == jurisdiccion]
+        if fecha_desde is not None and fecha_hasta is not None and "_fecha" in df.columns:
+            mask = df["_fecha"].apply(
+                lambda x: fecha_desde <= x <= fecha_hasta if pd.notna(x) and x is not None else False
+            )
+            df = df[mask]
         return StatsEngine(df)
+
+    def _filtrar_df_por_rango_fecha(self, fecha_desde: date, fecha_hasta: date) -> pd.DataFrame:
+        """Devuelve un DataFrame filtrado por rango de fechas inclusive."""
+        if "_fecha" not in self.df.columns:
+            return self.df.iloc[0:0].copy()
+
+        mask = self.df["_fecha"].apply(
+            lambda x: fecha_desde <= x <= fecha_hasta if pd.notna(x) and x is not None else False
+        )
+        return self.df[mask].copy()
+
+    def _comparativo_entre_dataframes(
+        self,
+        df_actual: pd.DataFrame,
+        df_anterior: pd.DataFrame,
+        campo: str,
+    ) -> pd.DataFrame:
+        """Construye una tabla comparativa estándar entre dos subconjuntos."""
+        conteo_ant = df_anterior[campo].dropna().value_counts()
+        conteo_act = df_actual[campo].dropna().value_counts()
+
+        categorias = sorted(set(conteo_ant.index) | set(conteo_act.index))
+
+        result = pd.DataFrame({"categoria": categorias})
+        result["cantidad_anterior"] = result["categoria"].map(conteo_ant).fillna(0).astype(int)
+        result["cantidad_actual"] = result["categoria"].map(conteo_act).fillna(0).astype(int)
+        result["diferencia"] = result["cantidad_actual"] - result["cantidad_anterior"]
+        result["pct_variacion"] = result.apply(
+            lambda row: _pct_variacion(int(row["cantidad_anterior"]), int(row["cantidad_actual"])),
+            axis=1,
+        )
+
+        total_ant = int(result["cantidad_anterior"].sum())
+        total_act = int(result["cantidad_actual"].sum())
+        result.loc[len(result)] = [
+            "TOTAL",
+            total_ant,
+            total_act,
+            total_act - total_ant,
+            _pct_variacion(total_ant, total_act),
+        ]
+        return result
 
     # ====================================================================
     # Resumen rápido
