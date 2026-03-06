@@ -23,6 +23,7 @@ from app.config.settings import (
     COMISARIAS_POR_REGION,
     UNIDADES_REGIONALES,
 )
+from app.src.charts.generator import ChartGenerator
 from app.src.ui.editorial import close_stage, open_stage, render_hero, render_panel, render_section_heading
 
 # ====================================================================
@@ -156,6 +157,53 @@ def _construir_tabla_regional(
     return tabla
 
 
+def _resumen_robos_hurtos(total_robos: int, total_hurtos: int) -> pd.DataFrame:
+    """Construye una tabla simple para la dona global de robos vs hurtos."""
+    total = total_robos + total_hurtos
+    filas = [
+        {"categoria": "ROBOS", "categoria_label": "Robos", "cantidad": total_robos},
+        {"categoria": "HURTOS", "categoria_label": "Hurtos", "cantidad": total_hurtos},
+    ]
+    resumen = pd.DataFrame(filas)
+    resumen["porcentaje"] = (
+        (resumen["cantidad"] / total * 100).round(2) if total > 0 else 0.0
+    )
+    resumen["total"] = total
+    return resumen
+
+
+def _ranking_comisarias_robos_hurtos(
+    df: pd.DataFrame,
+    ur_code: str | None = None,
+    top_n: int = 12,
+) -> pd.DataFrame:
+    """Consolida comisarías con sus totales de robos y hurtos para visualización."""
+    frames = []
+
+    for codigo, titulo_ur in _UR_ORDEN:
+        if ur_code and codigo != ur_code:
+            continue
+
+        tabla = _construir_tabla_regional(df, codigo)
+        if len(tabla) == 0:
+            continue
+
+        tabla = tabla.copy()
+        tabla["UNIDAD_REGIONAL"] = codigo
+        tabla["UNIDAD_REGIONAL_LABEL"] = titulo_ur
+        tabla["categoria_label"] = (
+            tabla["COMISARIAS"] if ur_code else tabla["UNIDAD_REGIONAL"] + " · " + tabla["COMISARIAS"]
+        )
+        frames.append(tabla)
+
+    if not frames:
+        return pd.DataFrame(columns=["COMISARIAS", "ROBOS", "HURTOS", "TOTAL", "categoria_label"])
+
+    ranking = pd.concat(frames, ignore_index=True)
+    ranking = ranking.sort_values(["TOTAL", "ROBOS", "HURTOS"], ascending=False, ignore_index=True)
+    return ranking.head(top_n).copy()
+
+
 def _generar_tabla_html(df: pd.DataFrame, titulo_ur: str) -> str:
     """
     Genera HTML de una tabla estilizada con encabezado azul oscuro
@@ -213,6 +261,7 @@ def render():
     df = cargar_datos()
     df_filtered = render_filtros_sidebar(df)
     engine = get_engine(df_filtered)
+    charts = ChartGenerator()
 
     render_hero(
         "Delitos patrimoniales",
@@ -261,12 +310,82 @@ def render():
 
     # Determinar qué URs mostrar según el filtro de UR del sidebar
     urs_en_datos = set(df_rh["_unidad_regional"].dropna().unique())
+    urs_disponibles = []
+    for ur_code, _ in _UR_ORDEN:
+        if ur_code in urs_en_datos or df_rh["JURIS_HECH"].str.startswith(ur_code + "_", na=False).any():
+            urs_disponibles.append(ur_code)
+
+    render_section_heading(
+        3,
+        "Lectura visual",
+        "Distribución ejecutiva",
+        "Antes del bloque tabular, la vista resume el peso relativo entre robos y hurtos y muestra dónde se concentra el volumen por comisaría.",
+    )
+    open_stage(
+        3,
+        "Visualización inicial",
+        "Resumen patrimonial",
+        "La dona fija la relación global y el ranking comparado baja al detalle operativo por dependencia.",
+        stage_class="analysis-stage",
+    )
+
+    df_resumen = _resumen_robos_hurtos(total_robos, total_hurtos)
+    col_chart_left, col_chart_right = st.columns([0.9, 1.6])
+
+    with col_chart_left:
+        fig = charts.dona(df_resumen, "Participación global de robos y hurtos")
+        st.plotly_chart(fig, use_container_width=True)
+
+    with col_chart_right:
+        col_ctrl1, col_ctrl2 = st.columns([1.4, 1])
+        with col_ctrl1:
+            ur_selector = st.selectbox(
+                "Regional a visualizar",
+                ["Todas"] + urs_disponibles,
+                format_func=lambda code: "Todas las regionales" if code == "Todas" else dict(_UR_ORDEN).get(code, code),
+                key="robos_hurtos_ur_selector",
+            )
+        with col_ctrl2:
+            top_n = st.slider(
+                "Comisarías visibles",
+                min_value=5,
+                max_value=20,
+                value=10,
+                key="robos_hurtos_top_n",
+            )
+
+        df_chart = _ranking_comisarias_robos_hurtos(
+            df_rh,
+            ur_code=None if ur_selector == "Todas" else ur_selector,
+            top_n=top_n,
+        )
+
+        if len(df_chart) > 0:
+            fig = charts.barras_horizontal_comparativo(
+                df_chart.iloc[::-1],
+                "Comparativo de robos y hurtos por comisaría",
+                col_cat="categoria_label",
+                col_y1="ROBOS",
+                col_y2="HURTOS",
+                label_y1="Robos",
+                label_y2="Hurtos",
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+            lider = df_chart.iloc[0]
+            st.caption(
+                f"Mayor volumen visible: {lider['categoria_label']} con {int(lider['TOTAL']):,} hechos ({int(lider['ROBOS']):,} robos y {int(lider['HURTOS']):,} hurtos)."
+            )
+        else:
+            st.info("Sin comisarías disponibles para el recorte seleccionado.")
+
+    close_stage()
 
     # Generar tablas por cada UR
     tablas_csv = []
 
     open_stage(
-        3,
+        4,
         "Escena analítica",
         "Cuadros por unidad regional",
         "La secuencia central presenta cada unidad regional como bloque independiente para una lectura rápida por comisaría.",
@@ -302,13 +421,13 @@ def render():
     if tablas_csv:
         st.divider()
         render_section_heading(
-            4,
+            5,
             "Cierre documental",
             "Exportación patrimonial",
             "La salida final consolida todas las regionales en un único archivo para distribución, respaldo o archivo.",
         )
         open_stage(
-            4,
+            5,
             "Archivo final",
             "Descarga consolidada",
             "Incluye todas las tablas regionales generadas en la vista actual.",

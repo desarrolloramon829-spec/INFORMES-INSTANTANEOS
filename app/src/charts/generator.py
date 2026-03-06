@@ -425,6 +425,65 @@ class ChartGenerator:
 
         return _apply_base_layout(fig, titulo, height)
 
+    @staticmethod
+    def barras_horizontal_comparativo(
+        df: pd.DataFrame,
+        titulo: str = "",
+        col_cat: str = "categoria",
+        col_y1: str = "cantidad_anterior",
+        col_y2: str = "cantidad_actual",
+        label_y1: str = "Serie 1",
+        label_y2: str = "Serie 2",
+        height: int = 520,
+    ) -> go.Figure:
+        """Gráfico de barras horizontales agrupadas para comparar dos series."""
+        theme = _get_active_theme()
+        df_plot = df.copy()
+        palette = _palette_by_chart(theme, "comparison")
+        show_text = _should_show_text(len(df_plot), 12)
+        height = _adaptive_height(len(df_plot), base=230, per_item=28, minimum=380, maximum=940)
+
+        fig = go.Figure()
+
+        fig.add_trace(go.Bar(
+            name=label_y1,
+            y=df_plot[col_cat],
+            x=df_plot[col_y1],
+            orientation="h",
+            marker_color=palette[0],
+            marker_line=dict(color=theme["border"], width=1),
+            text=df_plot[col_y1].apply(lambda x: f"{int(x):,}") if show_text else None,
+            textposition="outside" if show_text else "none",
+            textfont=dict(color=theme["text"]),
+            cliponaxis=False,
+            hovertemplate=f"<b>{label_y1}</b><br>%{{y}}: %{{x:,}}<extra></extra>",
+        ))
+
+        fig.add_trace(go.Bar(
+            name=label_y2,
+            y=df_plot[col_cat],
+            x=df_plot[col_y2],
+            orientation="h",
+            marker_color=palette[1],
+            marker_line=dict(color=theme["border"], width=1),
+            text=df_plot[col_y2].apply(lambda x: f"{int(x):,}") if show_text else None,
+            textposition="outside" if show_text else "none",
+            textfont=dict(color=theme["text"]),
+            cliponaxis=False,
+            hovertemplate=f"<b>{label_y2}</b><br>%{{y}}: %{{x:,}}<extra></extra>",
+        ))
+
+        fig.update_layout(
+            barmode="group",
+            xaxis_title="Cantidad",
+            yaxis_title="",
+            hovermode="y unified",
+        )
+
+        _apply_axis_density(fig, df_plot[col_cat].tolist(), axis="y")
+
+        return _apply_base_layout(fig, titulo, height)
+
     # ---- Tabla estilizada (Power BI style) ----
 
     @staticmethod
@@ -492,16 +551,25 @@ class ChartGenerator:
     ) -> go.Figure:
         """Heatmap para matrices de datos (ej: delito x mes)."""
         theme = _get_active_theme()
+        row_count, col_count = df_pivot.shape
+        adaptive_height = _adaptive_height(row_count, base=250, per_item=34, minimum=320, maximum=920)
+        height = max(height, adaptive_height)
+        show_text = df_pivot.size <= 72
+        text_size = 10 if row_count > 6 or col_count > 6 else 11
+        x_labels = df_pivot.columns.tolist()
+        y_labels = df_pivot.index.tolist()
+
         fig = go.Figure(data=go.Heatmap(
             z=df_pivot.values,
-            x=df_pivot.columns.tolist(),
-            y=df_pivot.index.tolist(),
+            x=x_labels,
+            y=y_labels,
             colorscale=_themed_colorscale(theme) if colorscale == "YlOrRd" else colorscale,
             text=df_pivot.values,
-            texttemplate="%{text:,}" if df_pivot.size <= 120 else None,
+            texttemplate="%{text:,}" if show_text else None,
+            textfont=dict(size=text_size, color=theme["heading"]),
             hovertemplate="<b>%{y}</b> - %{x}<br>Cantidad: %{z:,}<extra></extra>",
-            xgap=1,
-            ygap=1,
+            xgap=2,
+            ygap=2,
             colorbar=dict(outlinewidth=0, tickfont=dict(color=theme["text"])),
         ))
 
@@ -509,9 +577,12 @@ class ChartGenerator:
             xaxis_title="",
             yaxis_title="",
             yaxis=dict(autorange="reversed"),
+            margin=dict(l=118 if row_count > 6 else 80, r=30, t=68, b=96 if col_count > 5 else 60),
         )
 
-        _apply_axis_density(fig, df_pivot.columns.tolist(), axis="x")
+        _apply_axis_density(fig, x_labels, axis="x")
+        _apply_axis_density(fig, y_labels, axis="y")
+        fig.update_xaxes(tickangle=-35 if col_count > 4 else 0)
 
         return _apply_base_layout(fig, titulo, height)
 

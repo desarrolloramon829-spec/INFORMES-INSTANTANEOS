@@ -123,23 +123,74 @@ def render():
 
     close_stage()
 
-    # ---- Exportar ----
     st.divider()
     render_section_heading(
         4,
+        "Cruce territorial",
+        "Mapa de calor por regional y delito",
+        "La vista cruza territorio y modalidad para ubicar dónde se concentra cada familia delictiva dominante sin depender solo del ranking general.",
+    )
+    open_stage(
+        4,
+        "Profundización",
+        "Intensidad territorial cruzada",
+        "El heatmap resume la presión por unidad regional y modalidad, mientras el panel lateral destaca la combinación más intensa del recorte actual.",
+        stage_class="analysis-stage",
+    )
+
+    top_modalidades = st.slider(
+        "Modalidades visibles en la matriz territorial",
+        min_value=4,
+        max_value=12,
+        value=8,
+        key="top_modalidades_heatmap_geo",
+    )
+    pivot_geo = engine.matriz_unidad_regional_delito(top_n_delitos=top_modalidades)
+
+    if pivot_geo.empty:
+        st.info("Sin datos suficientes para construir el cruce territorial por modalidad.")
+    else:
+        col_geo_1, col_geo_2 = st.columns([1.8, 1])
+        with col_geo_1:
+            fig = charts.heatmap(pivot_geo, "Intensidad territorial por unidad regional y modalidad", height=500)
+            st.plotly_chart(fig, use_container_width=True)
+
+        with col_geo_2:
+            valor_maximo = int(pivot_geo.to_numpy().max())
+            ur_max, delito_max = pivot_geo.stack().idxmax()
+            st.markdown("#### Lectura rápida")
+            st.markdown(
+                f"""
+                **Mayor concentración territorial:**
+                - Regional: **{ur_max}**
+                - Modalidad: **{delito_max}**
+                - Hechos: **{valor_maximo:,}**
+                """
+            )
+
+            display_geo = pivot_geo.copy()
+            display_geo.insert(0, "Unidad Regional", display_geo.index)
+            st.dataframe(display_geo, hide_index=True, use_container_width=True, height=330)
+
+    close_stage()
+
+    # ---- Exportar ----
+    st.divider()
+    render_section_heading(
+        5,
         "Cierre documental",
         "Exportación geográfica",
         "Cierra el recorrido con archivos directos para unidades regionales y jurisdicciones.",
     )
     open_stage(
-        4,
+        5,
         "Archivos finales",
         "Descargas territoriales",
         "Los archivos se generan desde la misma base filtrada para conservar coherencia con la vista.",
         stage_class="export-stage",
     )
     st.markdown("### Descarga documental")
-    col_e1, col_e2 = st.columns(2)
+    col_e1, col_e2, col_e3 = st.columns(3)
     with col_e1:
         csv = engine.delitos_por_unidad_regional().to_csv(index=False).encode("utf-8")
         st.download_button("⬇️ Unidades Regionales (CSV)", csv,
@@ -148,4 +199,8 @@ def render():
         csv = engine.delitos_por_jurisdiccion(top_n=200).to_csv(index=False).encode("utf-8")
         st.download_button("⬇️ Jurisdicciones (CSV)", csv,
                            "delitos_por_jurisdiccion.csv", "text/csv")
+    with col_e3:
+        csv = engine.matriz_unidad_regional_delito(top_n_delitos=top_modalidades).reset_index(names="Unidad Regional").to_csv(index=False).encode("utf-8")
+        st.download_button("⬇️ Regional vs delito (CSV)", csv,
+                           "matriz_unidad_regional_delito.csv", "text/csv")
     close_stage()

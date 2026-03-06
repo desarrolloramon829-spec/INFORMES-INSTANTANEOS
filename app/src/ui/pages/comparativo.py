@@ -234,9 +234,10 @@ def _render_comparativo_anual(engine, charts):
         "La síntesis ya dejó la lectura central. Desde aquí aparecen la tendencia temporal, la composición por delito y la tabla de contraste.",
         stage_class="analysis-stage",
     )
-    tab_temporal, tab_delitos, tab_tabla = st.tabs([
+    tab_temporal, tab_delitos, tab_modalidades, tab_tabla = st.tabs([
         "📅 Comparativo Temporal",
         "📋 Comparativo por Delito",
+        "🧩 Modalidades Reales",
         "📊 Tabla Detallada",
     ])
 
@@ -277,13 +278,46 @@ def _render_comparativo_anual(engine, charts):
             fig = charts.barras_comparativo(
                 df_chart,
                 f"Delitos por Modalidad — {anio_anterior} vs {anio_actual}",
+                col_cat="categoria_label" if "categoria_label" in df_chart.columns else "categoria",
                 label_y1=str(anio_anterior),
                 label_y2=str(anio_actual),
             )
             st.plotly_chart(fig, use_container_width=True)
 
             st.markdown("#### Tabla comparativa por delito")
-            _tabla_comparativa(df_comp_del, "categoria", str(anio_anterior), str(anio_actual))
+            _tabla_comparativa(
+                df_comp_del,
+                "categoria_label" if "categoria_label" in df_comp_del.columns else "categoria",
+                str(anio_anterior),
+                str(anio_actual),
+            )
+
+    with tab_modalidades:
+        st.markdown(f"### Comparativo por Modalidad Operativa: {anio_anterior} vs {anio_actual}")
+        df_comp_modalidades = engine.comparativo_modalidades_operativas(anio_actual, anio_anterior)
+        top_modalidades = st.slider(
+            "Modalidades operativas a graficar",
+            min_value=5,
+            max_value=40,
+            value=min(15, max(len(df_comp_modalidades[df_comp_modalidades["categoria_label"] != "TOTAL"]), 5)),
+            key="top_modalidades_operativas_anual",
+        )
+        df_chart_modalidades = df_comp_modalidades[df_comp_modalidades["categoria_label"] != "TOTAL"].head(top_modalidades)
+        if len(df_chart_modalidades) > 0:
+            fig = charts.barras_comparativo(
+                df_chart_modalidades,
+                f"Modalidades operativas — {anio_anterior} vs {anio_actual}",
+                col_cat="categoria_label",
+                label_y1=str(anio_anterior),
+                label_y2=str(anio_actual),
+                height=max(500, len(df_chart_modalidades) * 28 + 180),
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No hay datos suficientes para graficar modalidades operativas.")
+
+        st.markdown("#### Tabla comparativa por modalidad operativa")
+        _tabla_comparativa(df_comp_modalidades, "categoria_label", str(anio_anterior), str(anio_actual))
 
     with tab_tabla:
         st.markdown("### Resumen consolidado")
@@ -293,7 +327,12 @@ def _render_comparativo_anual(engine, charts):
         ], key="dimension_anual")
 
         df_comp = engine.comparativo_periodos(anio_actual, anio_anterior, dimension)
-        _tabla_comparativa(df_comp, "categoria", str(anio_anterior), str(anio_actual))
+        _tabla_comparativa(
+            df_comp,
+            "categoria_label" if "categoria_label" in df_comp.columns else "categoria",
+            str(anio_anterior),
+            str(anio_actual),
+        )
 
     _close_scene_stage()
 
@@ -446,9 +485,10 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
         "Después de la síntesis aparecen la evolución, los delitos, las comisarías y el detalle consolidado.",
         stage_class="analysis-stage",
     )
-    tab_evolucion, tab_delitos, tab_comisarias, tab_tabla = st.tabs([
+    tab_evolucion, tab_delitos, tab_modalidades, tab_comisarias, tab_tabla = st.tabs([
         "📅 Comparativo Temporal",
         "📋 Comparativo por Delito",
+        "🧩 Modalidades Reales",
         "🏛️ Comparativo por Comisaría",
         "📊 Tabla Detallada",
     ])
@@ -478,6 +518,7 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
             fig = charts.barras_comparativo(
                 df_chart,
                 f"Delitos por Modalidad — {label_a} vs {label_b}",
+                col_cat="categoria_label" if "categoria_label" in df_chart.columns else "categoria",
                 label_y1="Periodo A",
                 label_y2="Periodo B",
             )
@@ -486,7 +527,39 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
             st.info("No hay datos suficientes para graficar el comparativo por delito.")
 
         st.markdown("#### Tabla comparativa por delito")
-        _tabla_comparativa(df_comp_del, "categoria", label_a, label_b)
+        _tabla_comparativa(
+            df_comp_del,
+            "categoria_label" if "categoria_label" in df_comp_del.columns else "categoria",
+            label_a,
+            label_b,
+        )
+
+    with tab_modalidades:
+        st.markdown(f"### Comparativo por Modalidad Operativa: {label_a} vs {label_b}")
+        df_comp_modalidades = engine.comparativo_modalidades_operativas_rango(desde_b, hasta_b, desde_a, hasta_a)
+        top_modalidades = st.slider(
+            "Modalidades operativas a graficar",
+            min_value=5,
+            max_value=40,
+            value=min(15, max(len(df_comp_modalidades[df_comp_modalidades["categoria_label"] != "TOTAL"]), 5)),
+            key="top_modalidades_operativas_rango",
+        )
+        df_chart_modalidades = df_comp_modalidades[df_comp_modalidades["categoria_label"] != "TOTAL"].head(top_modalidades)
+        if len(df_chart_modalidades) > 0:
+            fig = charts.barras_comparativo(
+                df_chart_modalidades,
+                f"Modalidades operativas — {label_a} vs {label_b}",
+                col_cat="categoria_label",
+                label_y1="Periodo A",
+                label_y2="Periodo B",
+                height=max(500, len(df_chart_modalidades) * 28 + 180),
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No hay datos suficientes para graficar modalidades operativas.")
+
+        st.markdown("#### Tabla comparativa por modalidad operativa")
+        _tabla_comparativa(df_comp_modalidades, "categoria_label", label_a, label_b)
 
     with tab_comisarias:
         st.markdown(f"### Comparativo por Comisaría: {label_a} vs {label_b}")
@@ -523,7 +596,12 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
             key="dimension_rangos",
         )
         df_comp = engine.comparativo_periodos_rango(desde_b, hasta_b, desde_a, hasta_a, dimension)
-        _tabla_comparativa(df_comp, "categoria", label_a, label_b)
+        _tabla_comparativa(
+            df_comp,
+            "categoria_label" if "categoria_label" in df_comp.columns else "categoria",
+            label_a,
+            label_b,
+        )
 
     _close_scene_stage()
 

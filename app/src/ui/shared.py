@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import datetime
 import calendar
+import os
 import re
 import unicodedata
 
@@ -19,6 +20,19 @@ from app.config.settings import (
 )
 
 
+def _resolve_loader_debug_options() -> dict:
+    """Resuelve opciones de diagnóstico del loader a partir del entorno."""
+    debug_enabled = os.getenv("INFORMES_DEBUG_DIAGNOSTICS", "0").strip().lower() in {"1", "true", "yes", "on"}
+    diagnostic_path = os.getenv(
+        "INFORMES_DEBUG_DIAGNOSTICS_PATH",
+        "diagnostics/reporte_diagnostico_carga.json",
+    ).strip()
+
+    return {
+        "diagnostic_json_path": diagnostic_path if debug_enabled and diagnostic_path else None,
+    }
+
+
 @st.cache_data(show_spinner="Cargando shapefiles... esto puede tomar unos minutos la primera vez.")
 def cargar_datos() -> pd.DataFrame:
     """Carga todos los shapefiles con caché de Streamlit."""
@@ -30,7 +44,8 @@ def cargar_datos() -> pd.DataFrame:
         progress_bar.progress(pct)
         status_text.text(msg)
 
-    df = loader.cargar_todo(use_cache=False, progress_callback=callback)
+    debug_options = _resolve_loader_debug_options()
+    df = loader.cargar_todo(use_cache=False, progress_callback=callback, **debug_options)
     progress_bar.empty()
     status_text.empty()
     return df

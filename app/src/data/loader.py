@@ -4,9 +4,11 @@ Lee los 132 shapefiles, unifica esquemas, limpia datos y genera un DataFrame ún
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 import logging
+import warnings
 from typing import Optional
 
 import geopandas as gpd
@@ -35,6 +37,12 @@ _ENCODINGS = ["utf-8", "cp1252", "iso-8859-1", "latin1"]
 
 # Secuencias mojibake comunes de UTF-8 leído como latin1
 _MOJIBAKE_PATTERNS = ["Ã©", "Ã¡", "Ã±", "Ã³", "Ã\xad", "Ã¼", "Ã\x89"]
+
+_ENCODING_WARNING_SNIPPETS = (
+    "couldn't be converted correctly",
+    "could not be converted correctly",
+    "converted correctly from cp1252 to utf-8",
+)
 
 # Columnas comunes a los 4 esquemas detectados (49 campos)
 COLUMNAS_COMUNES = [
@@ -140,6 +148,81 @@ class ShapefileLoader:
         self.base_path = base_path
         self._cache: Optional[pd.DataFrame] = None
         self._errores: list[dict] = []
+        self._encoding_fallbacks: list[dict] = []
+
+    @staticmethod
+    def _has_encoding_warning(captured_warnings) -> bool:
+        """Detecta advertencias típicas de pyogrio sobre conversión defectuosa."""
+        for warning_item in captured_warnings:
+            message = str(warning_item.message).lower()
+            if any(snippet in message for snippet in _ENCODING_WARNING_SNIPPETS):
+                return True
+        return False
+
+    def _read_geofile(self, full_path: str, key: str, encoding: Optional[str] = None):
+        """Lee un shapefile capturando advertencias de encoding para decidir reintentos."""
+        with warnings.catch_warnings(record=True) as captured_warnings:
+            warnings.simplefilter("always", RuntimeWarning)
+            gdf = gpd.read_file(full_path, encoding=encoding)
+
+        if self._has_encoding_warning(captured_warnings):
+            logger.debug(
+                "Advertencia de conversión detectada al leer %s con encoding '%s'. Se probará otra alternativa.",
+                key,
+                encoding or "auto",
+            )
+            return None
+
+        return gdf
+
+    def _registrar_fallback_encoding(
+        self,
+        key: str,
+        full_path: str,
+        encoding_final: str,
+        intentos_descartados: list[dict],
+    ) -> None:
+        """Registra en logs qué shapefiles necesitaron fallback de encoding."""
+        evento = {
+            "key": key,
+            "path": full_path,
+            "encoding_final": encoding_final,
+            "intentos_descartados": list(intentos_descartados),
+        }
+        self._encoding_fallbacks.append(evento)
+
+        detalle_intentos = ", ".join(
+            f"{item['encoding']} ({item['motivo']})" for item in intentos_descartados
+        ) or "sin intentos previos"
+        logger.info(
+            "Fallback de encoding en %s. Encoding final=%s. Intentos descartados=%s",
+            key,
+            encoding_final,
+            detalle_intentos,
+        )
+
+    def _resumen_encoding_fallbacks(self) -> dict:
+        """Construye un resumen estructurado de fallbacks de encoding."""
+        resumen_por_encoding: dict[str, int] = {}
+        for item in self._encoding_fallbacks:
+            encoding_final = item.get("encoding_final", "desconocido")
+            resumen_por_encoding[encoding_final] = resumen_por_encoding.get(encoding_final, 0) + 1
+
+        return {
+            "total_fallbacks": len(self._encoding_fallbacks),
+            "por_encoding_final": resumen_por_encoding,
+            "shapefiles": [item["key"] for item in self._encoding_fallbacks],
+            "detalles": self._encoding_fallbacks,
+        }
+
+    def _exportar_diagnostico_json(self, diagnostic_json_path: str, payload: dict) -> None:
+        """Escribe un archivo JSON de diagnóstico si el usuario lo solicita."""
+        output_dir = os.path.dirname(diagnostic_json_path)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+        with open(diagnostic_json_path, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, ensure_ascii=False, indent=2)
+        logger.info("Diagnóstico de carga exportado a JSON: %s", diagnostic_json_path)
 
     # ----- Lectura de un shapefile individual -----
 
@@ -156,9 +239,14 @@ class ShapefileLoader:
             self._errores.append({"key": key, "error": "archivo no encontrado"})
             return None
 
+        intentos_descartados: list[dict] = []
+
         for enc in _ENCODINGS:
             try:
-                gdf = gpd.read_file(full_path, encoding=enc)
+                gdf = self._read_geofile(full_path, key, encoding=enc)
+                if gdf is None:
+                    intentos_descartados.append({"encoding": enc, "motivo": "warning-conversion"})
+                    continue
                 # Eliminar geometría, trabajar con DataFrame plano
                 df = pd.DataFrame(gdf.drop(columns="geometry", errors="ignore"))
                 # Verificar mojibake: si hay secuencias corruptas, probar otro encoding
@@ -167,19 +255,26 @@ class ShapefileLoader:
                 )
                 if any(pat in sample_text for pat in _MOJIBAKE_PATTERNS):
                     logger.debug("Mojibake detectado con encoding '%s' en %s, probando otro.", enc, key)
+                    intentos_descartados.append({"encoding": enc, "motivo": "mojibake"})
                     continue
                 df["_shapefile_key"] = key
                 df["_unidad_regional"] = get_ur_from_key(key)
+                if intentos_descartados:
+                    self._registrar_fallback_encoding(key, full_path, enc, intentos_descartados)
                 return df
-            except Exception:
+            except Exception as exc:
+                intentos_descartados.append({"encoding": enc, "motivo": type(exc).__name__})
                 continue
 
         # Último intento sin encoding explícito
         try:
-            gdf = gpd.read_file(full_path)
+            gdf = self._read_geofile(full_path, key)
+            if gdf is None:
+                raise ValueError("advertencia de conversión durante autodetección de encoding")
             df = pd.DataFrame(gdf.drop(columns="geometry", errors="ignore"))
             df["_shapefile_key"] = key
             df["_unidad_regional"] = get_ur_from_key(key)
+            self._registrar_fallback_encoding(key, full_path, "auto", intentos_descartados)
             return df
         except Exception as e:
             logger.error("No se pudo leer %s: %s", key, e)
@@ -287,13 +382,19 @@ class ShapefileLoader:
 
     # ----- Métodos públicos de carga -----
 
-    def cargar_todo(self, use_cache: bool = True, progress_callback=None) -> pd.DataFrame:
+    def cargar_todo(
+        self,
+        use_cache: bool = True,
+        progress_callback=None,
+        diagnostic_json_path: Optional[str] = None,
+    ) -> pd.DataFrame:
         """
         Carga y combina los 132 shapefiles en un único DataFrame normalizado.
 
         Args:
             use_cache: Si True, devuelve el DataFrame cacheado si ya fue cargado.
             progress_callback: Función f(pct, msg) para informar progreso.
+            diagnostic_json_path: Ruta opcional para exportar un JSON de diagnóstico.
 
         Returns:
             DataFrame con todos los registros normalizados.
@@ -305,6 +406,7 @@ class ShapefileLoader:
         keys = list(_SHAPEFILES.keys())
         total = len(keys)
         self._errores = []
+        self._encoding_fallbacks = []
 
         for i, key in enumerate(keys):
             if progress_callback:
@@ -343,12 +445,44 @@ class ShapefileLoader:
             sin_franja, (sin_franja / n * 100) if n else 0,
             sin_dia, (sin_dia / n * 100) if n else 0,
         )
+        if self._encoding_fallbacks:
+            fallback_summary = self._resumen_encoding_fallbacks()
+            logger.info(
+                "Fallbacks de encoding detectados en %d shapefiles.",
+                len(self._encoding_fallbacks),
+            )
+            logger.info(
+                "Resumen estructurado de fallbacks de encoding: %s",
+                json.dumps(
+                    {
+                        "total_fallbacks": fallback_summary["total_fallbacks"],
+                        "por_encoding_final": fallback_summary["por_encoding_final"],
+                        "shapefiles": fallback_summary["shapefiles"],
+                    },
+                    ensure_ascii=False,
+                ),
+            )
         if "_unidad_regional" in combined.columns:
             dist_ur = combined["_unidad_regional"].value_counts().to_dict()
             logger.info("Distribución UR: %s", dist_ur)
         if "DELITO" in combined.columns:
             delitos_unicos = sorted(combined["DELITO"].dropna().unique().tolist())
             logger.info("Valores DELITO únicos (%d): %s", len(delitos_unicos), delitos_unicos)
+
+        if diagnostic_json_path:
+            diagnostic_payload = {
+                "registros": n,
+                "shapefiles_cargados": len(frames),
+                "shapefiles_totales": total,
+                "diagnostico": {
+                    "sin_fecha": sin_fecha,
+                    "sin_franja": sin_franja,
+                    "sin_dia": sin_dia,
+                },
+                "errores": self._errores,
+                "encoding_fallbacks": self._resumen_encoding_fallbacks(),
+            }
+            self._exportar_diagnostico_json(diagnostic_json_path, diagnostic_payload)
 
         return combined
 
@@ -378,6 +512,11 @@ class ShapefileLoader:
     def errores(self) -> list[dict]:
         """Lista de errores de carga."""
         return self._errores
+
+    @property
+    def encoding_fallbacks(self) -> list[dict]:
+        """Lista de shapefiles que necesitaron fallback de encoding."""
+        return self._encoding_fallbacks
 
     # ----- Singleton de conveniencia -----
 

@@ -180,10 +180,40 @@ def render():
         else:
             st.warning("Sin datos para mostrar")
 
-    # Años disponibles
     st.divider()
     _render_section_heading(
         7,
+        "Cruce rápido",
+        "Resumen de intensidad temporal",
+        "Una matriz compacta cruza día y franja para detectar rápidamente la combinación operativa más cargada del tablero actual.",
+    )
+
+    pivot_dia_franja = engine.matriz_dia_franja()
+    if not pivot_dia_franja.empty:
+        col_heatmap, col_summary = st.columns([1.7, 1])
+        with col_heatmap:
+            st.markdown("### Día versus franja")
+            st.caption("Lectura compacta del cruce temporal más útil para detectar concentración operativa.")
+            fig = charts.heatmap(pivot_dia_franja, "Mapa rápido día y franja", height=380)
+            st.plotly_chart(fig, use_container_width=True)
+
+        with col_summary:
+            dia_max, franja_max = pivot_dia_franja.stack().idxmax()
+            valor_maximo = int(pivot_dia_franja.to_numpy().max())
+            _render_sequenced_panel(
+                7,
+                "Intersección crítica",
+                "Mayor presión temporal",
+                f"La combinación más intensa se ubica en {dia_max} y {franja_max.replace(chr(10), ' / ')}, con {valor_maximo:,} hechos registrados.",
+                tone="accent",
+            )
+    else:
+        st.info("No hay datos suficientes para resumir el cruce día versus franja.")
+
+    # Años disponibles
+    st.divider()
+    _render_section_heading(
+        8,
         "Cobertura del tablero",
         "Marco de disponibilidad",
         "Cierre de la página con el alcance temporal efectivo de la base analizada.",
@@ -191,7 +221,7 @@ def render():
     anios = resumen.get("anios_disponibles", [])
     if anios:
         _render_sequenced_panel(
-            7,
+            8,
             "Disponibilidad",
             "Base consolidada lista para análisis",
             f"Años con datos: {', '.join(str(a) for a in anios)}. Total de registros vigentes: {engine.total_registros:,}.",

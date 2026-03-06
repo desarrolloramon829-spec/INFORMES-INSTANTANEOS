@@ -160,6 +160,60 @@ def _label_jurisdiccion(valor: str) -> str:
     return s.upper().strip()
 
 
+def _label_delito(valor: str) -> str:
+    """Genera una etiqueta legible para un valor crudo del campo DELITO."""
+    if pd.isna(valor):
+        return ""
+
+    texto = str(valor).strip()
+    if texto in DELITO_CATEGORIAS:
+        return DELITO_CATEGORIAS[texto]
+
+    texto = re.sub(r"^\d{3}-", "", texto)
+    texto = texto.replace("#", "")
+    texto = texto.replace("_", " ")
+    texto = re.sub(r"\s+", " ", texto).strip()
+    return texto.title()
+
+
+def _normalizar_modus_operandi(valor: str) -> str:
+    """Normaliza MODUS_OPER para construir modalidades operativas legibles."""
+    if pd.isna(valor):
+        return "No Consta"
+
+    texto = str(valor).strip()
+    if texto in {"", "NULL", "null", "None", "zzz", "#NO_CONSTA", "NO CONSTA", "NO_CONSTA"}:
+        return "No Consta"
+
+    texto = texto.replace("#", "")
+    texto = texto.replace("_", " ")
+    texto = re.sub(r"\s+", " ", texto).strip()
+    return texto.title()
+
+
+def _label_modalidad_operativa(delito: str, modus: str) -> str:
+    """Combina delito y modus operandi en una etiqueta operativa visible."""
+    delito_label = _label_delito(delito)
+    modus_label = _normalizar_modus_operandi(modus)
+    delito_upper = delito_label.upper()
+    modus_upper = modus_label.upper()
+
+    if not modus_label or modus_label == "No Consta":
+        return delito_upper
+
+    if modus_upper.startswith(delito_upper):
+        return modus_upper
+
+    delito_tokens = delito_upper.split()
+    modus_tokens = modus_upper.split()
+    if delito_tokens and modus_tokens and delito_tokens[0] == modus_tokens[0]:
+        modus_upper = " ".join(modus_tokens[1:]).strip()
+        if not modus_upper:
+            return delito_upper
+
+    return f"{delito_upper} {modus_upper}".strip()
+
+
 def _label_periodo_anual(granularidad: str, bucket) -> str:
     """Etiqueta visible para comparativos temporales anuales."""
     if granularidad == "semestres":
@@ -320,8 +374,84 @@ class StatsEngine:
         """Tabla de conteo por tipo de delito (solo DELITO, para resúmenes)."""
         return _conteo_simple(
             self.df, "DELITO",
-            labels=DELITO_CATEGORIAS,
+            labels={valor: _label_delito(valor) for valor in self.df["DELITO"].dropna().unique()},
         )
+
+    def delitos_por_modalidad_detallada(self, top_n: Optional[int] = None) -> pd.DataFrame:
+        """Conteo detallado de delitos usando el valor crudo de DELITO como modalidad específica."""
+        if "DELITO" not in self.df.columns:
+            return pd.DataFrame()
+
+        df_clean = self.df.dropna(subset=["DELITO"]).copy()
+        conteo = df_clean["DELITO"].value_counts().sort_values(ascending=False)
+        total = conteo.sum()
+
+        result = pd.DataFrame({
+            "categoria": conteo.index,
+            "cantidad": conteo.values,
+            "porcentaje": (conteo.values / total * 100).round(2) if total > 0 else 0,
+        })
+        result["categoria_label"] = result["categoria"].map(_label_delito)
+        result["total"] = total
+
+        if top_n:
+            result = result.head(top_n).copy()
+
+        return result
+
+    def modalidades_operativas(self, top_n: Optional[int] = None) -> pd.DataFrame:
+        """Conteo detallado por combinación real de DELITO y MODUS_OPER."""
+        if "DELITO" not in self.df.columns:
+            return pd.DataFrame()
+
+        df_clean = self.df_con_modalidad_operativa()
+        if df_clean.empty:
+            return pd.DataFrame()
+
+        df_clean = df_clean.dropna(subset=["DELITO"]).copy()
+        conteo = df_clean["categoria"].value_counts().sort_values(ascending=False)
+        total = conteo.sum()
+
+        result = pd.DataFrame({
+            "categoria": conteo.index,
+            "cantidad": conteo.values,
+            "porcentaje": (conteo.values / total * 100).round(2) if total > 0 else 0,
+        })
+        result[["delito", "modus_clean"]] = result["categoria"].str.split("||", n=1, expand=True, regex=False)
+        result["categoria_label"] = result.apply(
+            lambda row: _label_modalidad_operativa(row["delito"], row["modus_clean"]),
+            axis=1,
+        )
+        result["total"] = total
+
+        if top_n:
+            result = result.head(top_n).copy()
+
+        return result
+
+    def df_con_modalidad_operativa(self) -> pd.DataFrame:
+        """Devuelve una copia del DataFrame con la modalidad operativa derivada por registro."""
+        if "DELITO" not in self.df.columns:
+            return pd.DataFrame()
+
+        df_clean = self.df.dropna(subset=["DELITO"]).copy()
+        if df_clean.empty:
+            return pd.DataFrame()
+
+        if "MODUS_OPER" in df_clean.columns:
+            df_clean["modus_clean"] = df_clean["MODUS_OPER"].apply(_normalizar_modus_operandi)
+        else:
+            df_clean["modus_clean"] = "No Consta"
+
+        df_clean["modalidad_operativa"] = df_clean.apply(
+            lambda row: _label_modalidad_operativa(row["DELITO"], row["modus_clean"]),
+            axis=1,
+        )
+        df_clean["categoria"] = df_clean.apply(
+            lambda row: f"{row['DELITO']}||{row['modus_clean']}",
+            axis=1,
+        )
+        return df_clean
 
     def delitos_con_modus_operandi(self) -> pd.DataFrame:
         """Tabla de conteo por tipo de delito + modus operandi combinados."""
@@ -344,9 +474,7 @@ class StatsEngine:
             df_clean["modus_clean"] = "No consta"
 
         # Etiqueta legible del delito
-        df_clean["delito_label"] = (
-            df_clean["DELITO"].map(DELITO_CATEGORIAS).fillna(df_clean["DELITO"])
-        )
+        df_clean["delito_label"] = df_clean["DELITO"].map(_label_delito)
 
         # Agrupar por (delito, modus)
         conteo = (
@@ -386,6 +514,21 @@ class StatsEngine:
             labels=FRANJAS_LABELS,
         )
 
+    def matriz_dia_franja(self) -> pd.DataFrame:
+        """Matriz de intensidad por día de semana y franja horaria."""
+        if "DIA_HECHO" not in self.df.columns or "FRAN_HORAR" not in self.df.columns:
+            return pd.DataFrame()
+
+        df_valid = self.df[["DIA_HECHO", "FRAN_HORAR"]].dropna().copy()
+        if df_valid.empty:
+            return pd.DataFrame()
+
+        pivot = pd.crosstab(df_valid["DIA_HECHO"], df_valid["FRAN_HORAR"])
+        pivot = pivot.reindex(index=DIAS_SEMANA, columns=FRANJAS_HORARIAS, fill_value=0)
+        pivot.index = [DIAS_LABELS.get(valor, valor) for valor in pivot.index]
+        pivot.columns = [FRANJAS_LABELS.get(valor, valor) for valor in pivot.columns]
+        return pivot
+
     # ---- Informe 6.4: Medios de Movilidad ----
     def medios_movilidad(self) -> pd.DataFrame:
         """Conteo de medios de movilidad (campo multi-valor)."""
@@ -409,6 +552,26 @@ class StatsEngine:
             orden=MESES,
             labels=MESES_LABELS,
         )
+
+    def matriz_modalidad_franja(self, top_n_delitos: int = 8) -> pd.DataFrame:
+        """Matriz de intensidad por modalidad delictiva y franja horaria."""
+        if "DELITO" not in self.df.columns or "FRAN_HORAR" not in self.df.columns:
+            return pd.DataFrame()
+
+        df_valid = self.df[["DELITO", "FRAN_HORAR"]].dropna().copy()
+        if df_valid.empty:
+            return pd.DataFrame()
+
+        delitos_top = df_valid["DELITO"].value_counts().head(top_n_delitos).index.tolist()
+        if not delitos_top:
+            return pd.DataFrame()
+
+        df_valid = df_valid[df_valid["DELITO"].isin(delitos_top)].copy()
+        pivot = pd.crosstab(df_valid["DELITO"], df_valid["FRAN_HORAR"])
+        pivot = pivot.reindex(index=delitos_top, columns=FRANJAS_HORARIAS, fill_value=0)
+        pivot.index = [_label_delito(valor) for valor in pivot.index]
+        pivot.columns = [FRANJAS_LABELS.get(valor, valor) for valor in pivot.columns]
+        return pivot
 
     # ---- Informe 6.8: Delitos por Jurisdicción ----
     def delitos_por_jurisdiccion(self, top_n: int = 20) -> pd.DataFrame:
@@ -436,6 +599,30 @@ class StatsEngine:
         result["categoria_label"] = result["categoria"].map(UNIDADES_REGIONALES).fillna(result["categoria"])
         result["total"] = total
         return result
+
+    def matriz_unidad_regional_delito(self, top_n_delitos: int = 8) -> pd.DataFrame:
+        """Matriz territorial por unidad regional y modalidad delictiva."""
+        if "_unidad_regional" not in self.df.columns or "DELITO" not in self.df.columns:
+            return pd.DataFrame()
+
+        df_valid = self.df[["_unidad_regional", "DELITO"]].dropna().copy()
+        if df_valid.empty:
+            return pd.DataFrame()
+
+        delitos_top = (
+            df_valid["DELITO"].value_counts().head(top_n_delitos).index.tolist()
+        )
+        if not delitos_top:
+            return pd.DataFrame()
+
+        df_valid = df_valid[df_valid["DELITO"].isin(delitos_top)].copy()
+        pivot = pd.crosstab(df_valid["_unidad_regional"], df_valid["DELITO"])
+
+        ur_orden = [codigo for codigo in UNIDADES_REGIONALES.keys() if codigo in pivot.index]
+        pivot = pivot.reindex(index=ur_orden, columns=delitos_top, fill_value=0)
+        pivot.index = [UNIDADES_REGIONALES.get(valor, valor) for valor in pivot.index]
+        pivot.columns = [_label_delito(valor) for valor in pivot.columns]
+        return pivot
 
     # ---- Informe 6.10: Modus Operandi ----
     def modus_operandi(self, top_n: int = 15) -> pd.DataFrame:
@@ -510,6 +697,28 @@ class StatsEngine:
         df_act = self._filtrar_df_por_rango_fecha(fecha_actual_desde, fecha_actual_hasta)
 
         return self._comparativo_entre_dataframes(df_act, df_ant, campo)
+
+    def comparativo_modalidades_operativas(
+        self,
+        anio_actual: int,
+        anio_anterior: int,
+    ) -> pd.DataFrame:
+        """Compara modalidades operativas reales entre dos años."""
+        df_ant = self.df[self.df["_anio"] == anio_anterior]
+        df_act = self.df[self.df["_anio"] == anio_actual]
+        return self._comparativo_modalidades_operativas_df(df_act, df_ant)
+
+    def comparativo_modalidades_operativas_rango(
+        self,
+        fecha_actual_desde: date,
+        fecha_actual_hasta: date,
+        fecha_anterior_desde: date,
+        fecha_anterior_hasta: date,
+    ) -> pd.DataFrame:
+        """Compara modalidades operativas reales entre dos rangos de fechas."""
+        df_ant = self._filtrar_df_por_rango_fecha(fecha_anterior_desde, fecha_anterior_hasta)
+        df_act = self._filtrar_df_por_rango_fecha(fecha_actual_desde, fecha_actual_hasta)
+        return self._comparativo_modalidades_operativas_df(df_act, df_ant)
 
     def comparativo_diario_rango(
         self,
@@ -828,16 +1037,70 @@ class StatsEngine:
             axis=1,
         )
 
+        if campo == "DELITO":
+            result["categoria_label"] = result["categoria"].apply(_label_delito)
+
         total_ant = int(result["cantidad_anterior"].sum())
         total_act = int(result["cantidad_actual"].sum())
-        result.loc[len(result)] = [
-            "TOTAL",
-            total_ant,
-            total_act,
-            total_act - total_ant,
-            _pct_variacion(total_ant, total_act),
-        ]
+        total_row = {
+            "categoria": "TOTAL",
+            "cantidad_anterior": total_ant,
+            "cantidad_actual": total_act,
+            "diferencia": total_act - total_ant,
+            "pct_variacion": _pct_variacion(total_ant, total_act),
+        }
+        if campo == "DELITO":
+            total_row["categoria_label"] = "TOTAL"
+        result = pd.concat([result, pd.DataFrame([total_row])], ignore_index=True)
         return result
+
+    def _comparativo_modalidades_operativas_df(
+        self,
+        df_actual: pd.DataFrame,
+        df_anterior: pd.DataFrame,
+    ) -> pd.DataFrame:
+        """Comparativo estándar usando la combinación DELITO + MODUS_OPER."""
+        def _build_series(df_base: pd.DataFrame) -> pd.Series:
+            if "DELITO" not in df_base.columns:
+                return pd.Series(dtype="int64")
+
+            df_local = df_base.dropna(subset=["DELITO"]).copy()
+            if "MODUS_OPER" in df_local.columns:
+                df_local["modus_clean"] = df_local["MODUS_OPER"].apply(_normalizar_modus_operandi)
+            else:
+                df_local["modus_clean"] = "No Consta"
+
+            categoria = df_local.apply(
+                lambda row: _label_modalidad_operativa(row["DELITO"], row["modus_clean"]),
+                axis=1,
+            )
+            return categoria.value_counts()
+
+        conteo_ant = _build_series(df_anterior)
+        conteo_act = _build_series(df_actual)
+        categorias = sorted(set(conteo_ant.index) | set(conteo_act.index))
+
+        result = pd.DataFrame({"categoria_label": categorias})
+        result["cantidad_anterior"] = result["categoria_label"].map(conteo_ant).fillna(0).astype(int)
+        result["cantidad_actual"] = result["categoria_label"].map(conteo_act).fillna(0).astype(int)
+        result["diferencia"] = result["cantidad_actual"] - result["cantidad_anterior"]
+        result["pct_variacion"] = result.apply(
+            lambda row: _pct_variacion(int(row["cantidad_anterior"]), int(row["cantidad_actual"])),
+            axis=1,
+        )
+        result["categoria"] = result["categoria_label"]
+
+        total_ant = int(result["cantidad_anterior"].sum())
+        total_act = int(result["cantidad_actual"].sum())
+        total_row = {
+            "categoria": "TOTAL",
+            "categoria_label": "TOTAL",
+            "cantidad_anterior": total_ant,
+            "cantidad_actual": total_act,
+            "diferencia": total_act - total_ant,
+            "pct_variacion": _pct_variacion(total_ant, total_act),
+        }
+        return pd.concat([result, pd.DataFrame([total_row])], ignore_index=True)
 
     # ====================================================================
     # Resumen rápido

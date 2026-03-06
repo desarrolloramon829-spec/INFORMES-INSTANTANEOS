@@ -164,23 +164,66 @@ def render():
 
     close_stage()
 
-    # ---- Exportar ----
     st.divider()
     render_section_heading(
         5,
+        "Cruce operativo",
+        "Mapa de calor día versus franja",
+        "Esta matriz cruza ritmo semanal y ventana horaria para detectar concentraciones que no se ven cuando ambas dimensiones se leen por separado.",
+    )
+    open_stage(
+        5,
+        "Profundización",
+        "Intensidad temporal cruzada",
+        "El heatmap resume la carga por combinación de día y franja, mientras el bloque lateral destaca la intersección más intensa.",
+        stage_class="analysis-stage",
+    )
+
+    pivot_dia_franja = engine.matriz_dia_franja()
+    if pivot_dia_franja.empty:
+        st.info("Sin datos suficientes para construir el mapa de calor día versus franja.")
+    else:
+        col_hm_1, col_hm_2 = st.columns([1.8, 1])
+        with col_hm_1:
+            fig = charts.heatmap(pivot_dia_franja, "Intensidad de delitos por día y franja horaria", height=520)
+            st.plotly_chart(fig, use_container_width=True)
+
+        with col_hm_2:
+            valor_maximo = int(pivot_dia_franja.to_numpy().max())
+            dia_max, franja_max = pivot_dia_franja.stack().idxmax()
+            st.markdown("#### Lectura rápida")
+            st.markdown(
+                f"""
+                **Mayor concentración:**
+                - Día: **{dia_max}**
+                - Franja: **{franja_max.replace(chr(10), ' / ')}**
+                - Hechos: **{valor_maximo:,}**
+                """
+            )
+
+            display_heatmap = pivot_dia_franja.copy()
+            display_heatmap.insert(0, "Día", display_heatmap.index)
+            st.dataframe(display_heatmap, hide_index=True, use_container_width=True, height=360)
+
+    close_stage()
+
+    # ---- Exportar ----
+    st.divider()
+    render_section_heading(
+        6,
         "Cierre documental",
         "Exportación temporal",
         "Las salidas se mantienen separadas por dimensión para reutilizar el análisis semanal, horario o mensual sin reprocesar la vista.",
     )
     open_stage(
-        5,
+        6,
         "Archivos finales",
         "Descargas por dimensión",
         "Cada botón exporta la estructura limpia de la dimensión temporal elegida.",
         stage_class="export-stage",
     )
     st.markdown("### Descarga documental")
-    col_e1, col_e2, col_e3 = st.columns(3)
+    col_e1, col_e2, col_e3, col_e4 = st.columns(4)
     with col_e1:
         csv_dia = engine.delitos_por_dia_semana().to_csv(index=False).encode("utf-8")
         st.download_button("⬇️ Días de la semana (CSV)", csv_dia,
@@ -193,6 +236,10 @@ def render():
         csv_mes = engine.delitos_por_mes().to_csv(index=False).encode("utf-8")
         st.download_button("⬇️ Meses (CSV)", csv_mes,
                            "delitos_por_mes.csv", "text/csv")
+    with col_e4:
+        matriz_csv = engine.matriz_dia_franja().reset_index(names="Día").to_csv(index=False).encode("utf-8")
+        st.download_button("⬇️ Día vs franja (CSV)", matriz_csv,
+                           "matriz_dia_franja.csv", "text/csv")
     close_stage()
 
 

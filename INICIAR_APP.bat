@@ -1,11 +1,25 @@
 @echo off
 title Informes Instantaneos - Policia de Tucuman
 cd /d "%~dp0"
+
+set "INFORMES_DEBUG_DIAGNOSTICS="
+set "INFORMES_DEBUG_DIAGNOSTICS_PATH="
+
+if /I "%~1"=="debug" (
+    set "INFORMES_DEBUG_DIAGNOSTICS=1"
+    set "INFORMES_DEBUG_DIAGNOSTICS_PATH=diagnostics\reporte_diagnostico_carga.json"
+)
+
 echo.
 echo  =========================================
 echo   INFORMES INSTANTANEOS - Policia Tucuman
 echo  =========================================
 echo.
+if defined INFORMES_DEBUG_DIAGNOSTICS (
+    echo  Modo tecnico activado: se exportara diagnostico de carga.
+    echo  Ruta diagnostico: %INFORMES_DEBUG_DIAGNOSTICS_PATH%
+    echo.
+)
 echo  Liberando puerto 8501...
 for /f "tokens=5" %%a in ('netstat -aon ^| find ":8501" ^| find "LISTENING"') do (
     taskkill /PID %%a /F >nul 2>&1

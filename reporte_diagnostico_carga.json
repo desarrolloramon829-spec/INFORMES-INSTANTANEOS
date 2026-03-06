@@ -1,0 +1,1431 @@
+{
+  "registros": 46841,
+  "shapefiles_cargados": 128,
+  "shapefiles_totales": 132,
+  "diagnostico": {
+    "sin_fecha": 97,
+    "sin_franja": 74,
+    "sin_dia": 60
+  },
+  "errores": [],
+  "encoding_fallbacks": {
+    "total_fallbacks": 79,
+    "por_encoding_final": {
+      "auto": 35,
+      "latin1": 5,
+      "cp1252": 39
+    },
+    "shapefiles": [
+      "CARGA_FINCAS",
+      "CARGA_ABIGEATO",
+      "URC_CRIA1",
+      "URC_CRIA2",
+      "URC_CRIA3",
+      "URC_CRIA4",
+      "URC_CRIA5",
+      "URC_CRIA6",
+      "URC_CRIA7",
+      "URC_CRIA8",
+      "URC_CRIA9",
+      "URC_CRIA10",
+      "URC_CRIA11",
+      "URC_CRIA12",
+      "URC_CRIA13",
+      "URC_CRIA14",
+      "URC_CRIA15",
+      "URE_BANDA_RIO_SALI",
+      "URE_ALDERETES",
+      "URE_LASTENIA",
+      "URE_GUEMES",
+      "URE_LAS_CEJAS",
+      "URE_BELLA_VISTA",
+      "URE_COLOMBRES",
+      "URE_EL_CHANIAR",
+      "URE_RANCHILLOS",
+      "URE_LOS_RALOS",
+      "URE_DELFIN_GALLO",
+      "URE_LA_FLORIDA",
+      "URE_SAN_ANDRES",
+      "URE_EL_BRACHO",
+      "URE_POZO_ALTO",
+      "URE_EL_TIMBO",
+      "URE_ROMERA_POZO",
+      "URE_STA_ROSA_LEALES",
+      "URE_QUILMES",
+      "URE_INGENIO_LEALES",
+      "URE_LOS_SUELDOS",
+      "URE_VILLA_LEALES",
+      "URE_RIO_COLORADO",
+      "URE_LOS_GOMES",
+      "URE_LOS_PUESTOS",
+      "URE_LOS_HERRERA",
+      "URE_LOS_BULACIOS",
+      "URO_TAFI_VALLE",
+      "URO_EL_MOLLAR",
+      "URO_AMAICHA",
+      "URO_EL_MANANTIAL",
+      "URO_SAN_PABLO",
+      "URO_VILLA_NOUGUES",
+      "URO_LOS_AGUIRRE",
+      "URO_FAMAILLA",
+      "URO_VILLA_QUINTEROS",
+      "URS_CONCEPCION",
+      "URS_LA_TRINIDAD",
+      "URS_AGUILARES",
+      "URS_LOS_SARMIENTOS",
+      "URS_GRANEROS",
+      "URS_SIMOCA",
+      "URS_ALBERDI",
+      "URS_LA_COCHA",
+      "URN_TRANCAS",
+      "URN_VIPOS",
+      "URN_SAN_PEDRO",
+      "URN_MARTI_COLL",
+      "URN_SAN_JOSE",
+      "URN_EL_CORTE",
+      "URN_SAN_JAVIER",
+      "URN_VILLA_CARMELA",
+      "URN_RACO",
+      "URN_LOS_NOGALES",
+      "URN_EL_CADILLAL",
+      "URN_LAS_TALITAS",
+      "URN_MARIANO_MORENO",
+      "URN_EL_COLMENAR",
+      "URN_LOS_POCITOS",
+      "URN_LOMAS_TAFI",
+      "URN_VILLA_OBRERA",
+      "URN_TAFI_VIEJO_CENTRO"
+    ],
+    "detalles": [
+      {
+        "key": "CARGA_FINCAS",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CARGA FINCAS - copia1\\CARGA FINCAS Copia1\\CARGA FINCAS Copia1.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "warning-conversion"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "CARGA_ABIGEATO",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CARGA ABIGEATO - copia1\\CARGA ABIGEATO - copia1\\CARGA ABIGEATO - copia1.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "warning-conversion"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URC_CRIA1",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA1-URC- 2020\\MAPA DELICTUAL CRIA1-URC-2020\\MAPA DELICTUAL CRIA1-URC-2020.shp",
+        "encoding_final": "latin1",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "warning-conversion"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URC_CRIA2",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA2-URC-2020\\MAPA DELICTUAL CRIA 2-URC\\MAPA DELICTUAL CRIA2-URC-2020.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "warning-conversion"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URC_CRIA3",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA3-URC-2020\\MAPA DELICTUAL CRIA3-URC-2020\\MAPA DELICTUAL CRIA3-URC-2020.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URC_CRIA4",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA4-URC-2020\\MAPA DELICTUAL CRIA4-URC-2020\\MAPA DELICTUAL CRIA4-URC-2020.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URC_CRIA5",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA5-URC-2020\\MAPA DELICTUAL CRIA5-URC-2020\\MAPA DELICTUAL CRIA5-URC-2020.shp",
+        "encoding_final": "latin1",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "warning-conversion"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URC_CRIA6",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA6-URC-2020\\MAPA DELICTUAL CRIA6-URC-2020\\MAPA DELICTUAL CRIA6-URC-2020.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "warning-conversion"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URC_CRIA7",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA7-URC-2020\\MAPA DELICTUAL CRIA7-URC-2019\\MAPA DELICTUAL CRIA7-URC-2019.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "warning-conversion"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URC_CRIA8",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA8-URC-2020\\MAPA DELICTUAL CRIA8-URC-2020\\MAPA DELICTUAL CRIA8-URC-2020.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "warning-conversion"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URC_CRIA9",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA9-URC-2020\\MAPA DELICTUAL CRIA9-URC-2020\\MAPA DELICTUAL CRIA9-URC-2020.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "warning-conversion"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URC_CRIA10",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA10-URC-2020\\MAPA DELICTUAL CRIA10-URC-2020\\MAPA DELICTUAL CRIA10-URC-2020.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URC_CRIA11",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA11-URC-2020\\MAPA DELICTUAL CRIA11-URC-2020\\MAPA DELICTUAL CRIA11-URC-2020.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URC_CRIA12",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA12-URC-2020\\MAPA DELICTUAL CRIA12-URC-2020\\MAPA DELICTUAL CRIA12-URC-2020.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URC_CRIA13",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA13-URC-2020\\MAPA DELICTUAL CRIA13-URC-2020\\MAPA DELICTUAL CRIA13-URC-2020.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URC_CRIA14",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA14-URC-2020\\MAPA DELICTUAL CRIA14-URC-2020\\MAPA DELICTUAL CRIA14-URC-2020.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URC_CRIA15",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA15-URC-2020\\MAPA DELICTUAL CRIA15-URC-2020\\MAPA DELICTUAL CRIA15-URC-2020.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URE_BANDA_RIO_SALI",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA BANDA DEL RIO SALI-URE\\MAPA DELICTUAL CRIA BANDA DEL RIO SALI - URE\\MAPA DELICTUAL CRIA BANDA DEL RIO SALI - URE.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "warning-conversion"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URE_ALDERETES",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA ALDERETES-URE\\MAPA DELICTUAL CRIA ALDERETES-URE\\MAPA DELICTUAL CRIA ALDERETES-URE.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "warning-conversion"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URE_LASTENIA",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA LASTENIA-URE\\MAPA DELICTUAL CRIA LASTENIA - URE\\MAPA DELICTUAL CRIA LASTENIA - URE.shp",
+        "encoding_final": "latin1",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "warning-conversion"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URE_GUEMES",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA GUEMES-URE\\MAPA DELICTUAL CRIA GUEMES-URE-2020\\MAPA DELICTUAL CRIA GUEMES-URE-2020.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URE_LAS_CEJAS",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA LAS CEJAS-URE\\MAPA DELICTUAL CRIA LAS CEJAS-URE\\MAPA DELICTUAL CRIA LAS CEJAS-URE.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URE_BELLA_VISTA",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA BELLA VISTA-URE\\MAPA DELICTUAL CRIA BELLA VISTA-URE\\MAPA DELICTUAL CRIA BELLA VISTA-URE.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URE_COLOMBRES",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA COLOMBRES-URE\\MAPA DELICTUAL CRIA COLOMBRES-URE\\MAPA DELICTUAL CRIA COLOMBRES-URE.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URE_EL_CHANIAR",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA EL CHAÑAR-URE\\MAPA DELICTUAL CRIA EL CHAÑAR-URE\\MAPA DELICTUAL CRIA EL CHAÑAR-URE.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URE_RANCHILLOS",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA RANCHILLOS-URE\\MAPA DELICTUAL CRIA DE RANCHILLOS-URE\\MAPA DELICTUAL CRIA DE RANCHILLOS-URE.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URE_LOS_RALOS",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA LOS RALOS-URE\\MAPA DELICTUAL CRIA LOS RALOS-URE\\MAPA DELICTUAL CRIA LOS RALOS-URE.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URE_DELFIN_GALLO",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA DELFIN GALLO-URE\\MAPA DELICTUAL CRIA DELFIN GALLO-URE\\MAPA DELICTUAL CRIA DELFIN GALLO-URE.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URE_LA_FLORIDA",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA LA FLORIDA-URE\\MAPA DELICTUAL CRIA LA FLORIDA-URE\\MAPA DELICTUAL CRIA LA FLORIDA-URE.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URE_SAN_ANDRES",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA SAN ANDRES-URE\\MAPA DELICTUAL CRIA SAN ANDRES-URE\\MAPA DELICTUAL CRIA SAN ANDRES-URE.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URE_EL_BRACHO",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA EL BRACHO-URE\\MAPA DELICTUAL CRIA EL BRACHO-URE\\MAPA DELICTUAL CRIA EL BRACHO-URE.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URE_POZO_ALTO",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA POZO DEL ALTO-URE\\MAPA DELICTUAL CRIA POZO DEL ALTO-URE\\MAPA DELICTUAL CRIA POZO DEL ALTO-URE.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URE_EL_TIMBO",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA EL TIMBO-URE\\MAPA DELICTUAL CRIA EL TIMBO-URE\\MAPA DELICTUAL CRIA EL TIMBO-URE.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URE_ROMERA_POZO",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA ROMERA POZO-URE\\MAPA DELICTUAL CRIA ROMERA POZO-URE\\MAPA DELICTUAL CRIA ROMERA POZO-URE.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URE_STA_ROSA_LEALES",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA SANTA ROSA DE LEALES-URE\\MAPA DELICTUAL CRIA SANTA ROSA DE LEALES-URE\\MAPA DELICTUAL CRIA SANTA ROSA DE LEALES-URE.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URE_QUILMES",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA QUILMES-URE\\MAPA DELICTUAL CRIA QUILMES-URE\\MAPA DELICTUAL CRIA QUILMES-URE.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URE_INGENIO_LEALES",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA INGENIO LEALES-URE\\MAPA DELICTUAL CRIA INGENIO LEALES-URE\\MAPA DELICTUAL CRIA INGENIO LEALES-URE.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URE_LOS_SUELDOS",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA LOS SUELDOS-URE\\MAPA DELICTUAL CRIA LOS SUELDOS-URE\\MAPA DELICTUAL CRIA LOS SUELDOS-URE.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URE_VILLA_LEALES",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA VILLA DE LEALES-URE\\MAPA DELICTUAL CRIA VILLA DE LEALES-URE\\MAPA DELICTUAL CRIA VILLA DE LEALES-URE.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URE_RIO_COLORADO",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA RIO COLORADO-URE\\MAPA DELICTUAL CRIA RIO COLORADO-URE\\MAPA DELICTUAL CRIA RIO COLORADO-URE.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URE_LOS_GOMES",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA LOS GOMES-URE\\MAPA DELICTUAL CRIA LOS GOMES-URE\\MAPA DELICTUAL CRIA LOS GOMES-URE.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URE_LOS_PUESTOS",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA LOS PUESTOS-URE\\MAPA DELICTUAL CRIA LOS PUESTOS-URE\\MAPA DELICTUAL CRIA LOS PUESTOS-URE.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URE_LOS_HERRERA",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA LOS HERRERA-URE\\MAPA DELICTUAL CRIA LOS HERRERA-URE\\MAPA DELICTUAL CRIA LOS HERRERA-URE.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URE_LOS_BULACIOS",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA LOS BULACIOS-URE\\MAPA DELICTUAL CRIA LOS BULACIOS-URE\\MAPA DELICTUAL CRIA LOS BULACIOS-URE.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URO_TAFI_VALLE",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA TAFI DEL VALLE-URO\\MAPA DELICTUAL CRIA  TAFI DEL VALLE-URO\\MAPA DELICTUAL CRIA TAFI DEL VALLE-URO.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "warning-conversion"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URO_EL_MOLLAR",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA EL MOLLAR-URO\\MAPA DELICTUAL CRIA EL MOLLAR-URO\\MAPA DELICTUAL CRIA EL MOLLAR-URO.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "warning-conversion"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URO_AMAICHA",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA AMAICHA DEL VALLE-URO\\MAPA DELICTUAL CRIA  AMAICHA DEL VALLE-URO\\MAPA DELICTUAL CRIA AMAICHA DEL VALLE-URO.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URO_EL_MANANTIAL",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA EL MANANTIAL-URO\\MAPA DELICTUAL CRIA EL MANANTIAL-URO\\MAPA DELICTUAL CRIA EL MANANTIAL-URO.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URO_SAN_PABLO",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA SAN PABLO-URO\\MAPA DELICTUAL CRIA SAN PABLO-URO-2020\\MAPA DELICTUAL CRIA SAN PABLO-URO-2020.shp",
+        "encoding_final": "latin1",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "warning-conversion"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URO_VILLA_NOUGUES",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA VILLA NOUGUES-URO\\MAPA DELICTUAL CRIA VILLA NOUGUES-URO\\MAPA DELICTUAL CRIA VILLA NOUGUES-URO.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URO_LOS_AGUIRRE",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA LOS AGUIRRE-URO\\MAPA DELICTUAL CRIA LOS AGUIRRE-URO-2020\\MAPA DELICTUAL CRIA LOS AGUIRRE-URO-2020.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URO_FAMAILLA",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA FAMAILLA-URO\\MAPA DELICTUAL CRIA FAMAILLA-URO\\MAPA DELICTUAL CRIA FAMAILLA-URO.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "warning-conversion"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URO_VILLA_QUINTEROS",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA VILLA QUINTEROS-URO\\MAPA DELICTUAL CRIA VILLA QUINTEROS-URO\\MAPA DELICTUAL CRIA VILLA QUINTEROS-URO.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URS_CONCEPCION",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA CONCEPCION-URS\\MAPA DELICTUAL CRIA CONCEPCION-URS\\MAPA DELICTUAL CRIA CONCEPCION-URS.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URS_LA_TRINIDAD",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA LA TRINIDAD-URS\\MAPA DELICTUAL CRIA LA TRINIDAD-URS\\MAPA DELICTUAL CRIA LA TRINIDAD-URS.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URS_AGUILARES",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA AGUILARES-URS\\MAPA DELICTUAL CRIA AGUILARES-URS\\MAPA DELICTUAL CRIA AGUILARES-URS.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "warning-conversion"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URS_LOS_SARMIENTOS",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA LOS SARMIENTOS-URS\\MAPA DELICTUAL CRIA LOS SARMIENTOS-URS\\MAPA DELICTUAL CRIA LOS SARMIENTOS-URS.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URS_GRANEROS",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA GRANEROS-URS\\MAPA DELICTUAL CRIA GRANEROS-URS\\MAPA DELICTUAL CRIA GRANEROS-URS.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URS_SIMOCA",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA SIMOCA-URS\\MAPA DELICTUAL CRIA SIMOCA-URS\\MAPA DELICTUAL CRIA SIMOCA-URS.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URS_ALBERDI",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA ALBERDI-URS\\MAPA DELICTUAL CRIA CRIA ALBERDI-URS\\MAPA DELICTUAL CRIA ALBERDI-URS.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URS_LA_COCHA",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA LA COCHA-URS\\MAPA DELICTUAL CRIA LA COCHA-URS\\MAPA DELICTUAL CRIA LA COCHA-URS.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URN_TRANCAS",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA TRANCAS -URN\\MAPA DELICTUAL CRIA TRANCAS-URN\\MAPA DELICTUAL CRIA TRANCAS-URN.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URN_VIPOS",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA VIPOS-URN\\MAPA DELICTUAL CRIA VIPOS-URN\\MAPA DELICTUAL CRIA VIPOS-URN.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URN_SAN_PEDRO",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA SAN PEDRO-URN\\MAPA DELICTUAL CRIA SAN PEDRO-URN\\MAPA DELICTUAL CRIA SAN PEDRO-URN.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URN_MARTI_COLL",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA MARTI COLL-URN\\SHAPES_CRIA MARTI COLL-URN\\MAPA DELICTUAL CRIA MARTI COLL-URN.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "warning-conversion"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URN_SAN_JOSE",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA SAN JOSE-URN\\MAPA DELICTUAL CRIA SAN JOSE-URN-2020\\MAPA DELICTUAL CRIA SAN JOSE-URN-2020.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URN_EL_CORTE",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA EL CORTE-URN\\MAPA DELICTUAL CRIA EL CORTE-URN\\MAPA DELICTUAL CRIA EL CORTE-URN.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URN_SAN_JAVIER",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA SAN JAVIER-URN\\MAPA DELICTUAL CRIA SAN JAVIER-URN\\MAPA DELICTUAL CRIA SAN JAVIER-URN.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URN_VILLA_CARMELA",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA VILLA CARMELA-URN-URC-2020\\MAPA DELICTUAL CRIA VILLA CARMELA-URN-2020\\MAPA DELICTUAL CRIA VILLA CARMELA.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URN_RACO",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA RACO-URN\\MAPA DELICTUAL CRIA RACO-URN\\MAPA DELICTUAL CRIA RACO-URN.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URN_LOS_NOGALES",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA LOS NOGALES-URN\\MAPA DELICTUAL CRIA LOS NOGALES-URN\\MAPA DELICTUAL CRIA LOS NOGALES-URN.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URN_EL_CADILLAL",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA EL CADILLAL-URN\\MAPA DELICTUAL CRIA EL CADILLAL-URN\\MAPA DELICTUAL CRIA EL CADILLAL-URN.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URN_LAS_TALITAS",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA LAS TALITAS-URN\\MAPA DELICTUAL CRIA LAS TALITAS-URN\\MAPA DELICTUAL CRIA LAS TALITAS-URN.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URN_MARIANO_MORENO",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA VILLA MARIANO MORENO-URN\\MAPA DELICTUAL CRIA VILLA MARIANO MORENO-URN\\MAPA DELICTUAL CRIA VILLA MARIANO MORENO-URN.shp",
+        "encoding_final": "latin1",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "warning-conversion"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URN_EL_COLMENAR",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA EL COLMENAR-URN\\MAPA DELICTUAL CRIA EL COLMENAR-URN\\MAPA DELICTUAL CRIA VILLA EL COLMENAR URN.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URN_LOS_POCITOS",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA LOS POCITOS-URN\\MAPA DELICTUAL CRIA LOS POCITOS-URN\\MAPA DELICTUAL CRIA LOS POCITOS-URN.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      },
+      {
+        "key": "URN_LOMAS_TAFI",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA LOMAS DE TAFI-URN\\SHAPES_CRIA_LOMAS_DE_TAFI-URN\\MAPA DELICTUAL CRIA LOMAS DE TAFI-URN.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URN_VILLA_OBRERA",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA VILLA OBRERA--URN\\MAPA DELICTUAL CRIA VILLA OBRERA-URN\\MAPA DELICTUAL CRIA VILLA OBRERA-URN.shp",
+        "encoding_final": "auto",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "cp1252",
+            "motivo": "mojibake"
+          },
+          {
+            "encoding": "iso-8859-1",
+            "motivo": "UnicodeDecodeError"
+          },
+          {
+            "encoding": "latin1",
+            "motivo": "mojibake"
+          }
+        ]
+      },
+      {
+        "key": "URN_TAFI_VIEJO_CENTRO",
+        "path": "Z:\\MAPA DEL DELITO\\MAPAS DEL DELITO POR JURISDICCIONES\\CRIA TAFI VIEJO CENTRO-URN\\MAPA DELICTUAL CRIA TAFI VIEJO CENTRO-URN\\MAPA DELICTUAL CRIA TAFI VIEJO CENTRO-URN.shp",
+        "encoding_final": "cp1252",
+        "intentos_descartados": [
+          {
+            "encoding": "utf-8",
+            "motivo": "UnicodeDecodeError"
+          }
+        ]
+      }
+    ]
+  }
+}
