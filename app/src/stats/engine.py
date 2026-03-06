@@ -132,21 +132,22 @@ def _label_jurisdiccion(valor: str) -> str:
             break
 
     s = (
-        s.replace("COMISARIA_DE_", "Comisaria ")
-         .replace("COMISARIA__", "Comisaria ")
-         .replace("COMISARIA_", "Comisaria ")
-         .replace("SUBCOMISARIA_DE_", "Sub. Cria. ")
-         .replace("SUBCOMISARIA_", "Sub. Cria. ")
+        s.replace("COMISARIA_DE_", "Cria. ")
+         .replace("COMISARIA__", "Cria. ")
+         .replace("COMISARIA_", "Cria. ")
+         .replace("SUBCOMISARIA_DE_", "Subcria. ")
+         .replace("SUBCOMISARIA_", "Subcria. ")
          .replace("DESTACAMENTO_", "Dest. ")
          .replace("_", " ")
          .strip()
     )
 
-    match = re.match(r"(?i)^comisaria\s+(\d+)\s*a?$", s)
+    match = re.match(r"(?i)^(comisaria|cria\.)\s+(\d+)\s*a?$", s)
     if match:
-        return f"COMISARIA {match.group(1)}°"
+        return f"CRIA. {match.group(2)}°"
 
     for prefijo in (
+        "Subcria. de ", "Subcria. ",
         "Sub. Cria. de ", "Sub Cria. de ", "Sub.Cria. de ",
         "Sub. Cria. ", "Sub Cria. ", "Sub.Cria. ",
         "Cria. de ", "Cria. ",
@@ -157,6 +158,140 @@ def _label_jurisdiccion(valor: str) -> str:
             break
 
     return s.upper().strip()
+
+
+def _label_periodo_anual(granularidad: str, bucket) -> str:
+    """Etiqueta visible para comparativos temporales anuales."""
+    if granularidad == "semestres":
+        return {1: "1ER SEMESTRE", 2: "2DO SEMESTRE"}.get(int(bucket), f"SEMESTRE {bucket}")
+    if granularidad == "cuatrimestres":
+        return {1: "1ER CUATRIM.", 2: "2DO CUATRIM.", 3: "3ER CUATRIM."}.get(int(bucket), f"CUATRIM. {bucket}")
+    if granularidad == "trimestres":
+        return {1: "1ER TRIM.", 2: "2DO TRIM.", 3: "3ER TRIM.", 4: "4TO TRIM."}.get(int(bucket), f"TRIM. {bucket}")
+    if granularidad == "bimestres":
+        return f"BIM. {int(bucket):02d}"
+    if granularidad == "meses":
+        return MESES_LABELS[MESES[int(bucket) - 1]].upper()
+    if granularidad == "semanas":
+        return f"SEM. {int(bucket):02d}"
+    if granularidad == "dias":
+        return str(bucket)
+    return str(bucket)
+
+
+def _label_periodo_rango(granularidad: str, posicion: int) -> str:
+    """Etiqueta visible para comparativos temporales de rangos, alineados por posición."""
+    if granularidad == "semestres":
+        return f"SEMESTRE {posicion}"
+    if granularidad == "cuatrimestres":
+        return f"CUATRIM. {posicion}"
+    if granularidad == "trimestres":
+        return f"TRIM. {posicion}"
+    if granularidad == "bimestres":
+        return f"BIM. {posicion:02d}"
+    if granularidad == "meses":
+        return f"MES {posicion:02d}"
+    if granularidad == "semanas":
+        return f"SEM. {posicion:02d}"
+    if granularidad == "dias":
+        return f"DIA {posicion:02d}"
+    return f"TRAMO {posicion:02d}"
+
+
+def _serie_temporal_por_granularidad(df: pd.DataFrame, granularidad: str) -> pd.DataFrame:
+    """Agrupa registros por una granularidad temporal anual."""
+    if "_fecha" not in df.columns:
+        return pd.DataFrame(columns=["bucket", "bucket_label", "cantidad"])
+
+    df_valid = df[df["_fecha"].notna()].copy()
+    if df_valid.empty:
+        return pd.DataFrame(columns=["bucket", "bucket_label", "cantidad"])
+
+    fechas = pd.to_datetime(df_valid["_fecha"])
+
+    if granularidad == "semestres":
+        df_valid["bucket"] = ((fechas.dt.month - 1) // 6) + 1
+        df_valid["bucket_label"] = df_valid["bucket"].map(lambda x: _label_periodo_anual(granularidad, x))
+    elif granularidad == "cuatrimestres":
+        df_valid["bucket"] = ((fechas.dt.month - 1) // 4) + 1
+        df_valid["bucket_label"] = df_valid["bucket"].map(lambda x: _label_periodo_anual(granularidad, x))
+    elif granularidad == "trimestres":
+        df_valid["bucket"] = ((fechas.dt.month - 1) // 3) + 1
+        df_valid["bucket_label"] = df_valid["bucket"].map(lambda x: _label_periodo_anual(granularidad, x))
+    elif granularidad == "bimestres":
+        df_valid["bucket"] = ((fechas.dt.month - 1) // 2) + 1
+        df_valid["bucket_label"] = df_valid["bucket"].map(lambda x: _label_periodo_anual(granularidad, x))
+    elif granularidad == "meses":
+        df_valid["bucket"] = fechas.dt.month
+        df_valid["bucket_label"] = df_valid["bucket"].map(lambda x: _label_periodo_anual(granularidad, x))
+    elif granularidad == "semanas":
+        semanas = fechas.dt.isocalendar().week.astype(int)
+        df_valid["bucket"] = semanas
+        df_valid["bucket_label"] = semanas.map(lambda x: _label_periodo_anual(granularidad, x))
+    elif granularidad == "dias":
+        df_valid["bucket"] = fechas.dt.strftime("%m-%d")
+        df_valid["bucket_label"] = fechas.dt.strftime("%d/%m")
+    else:
+        raise ValueError(f"Granularidad no soportada: {granularidad}")
+
+    if granularidad == "dias":
+        agrupado = (
+            df_valid.groupby(["bucket", "bucket_label"])
+            .size()
+            .reset_index(name="cantidad")
+            .sort_values("bucket", ignore_index=True)
+        )
+        return agrupado
+
+    return (
+        df_valid.groupby(["bucket", "bucket_label"])
+        .size()
+        .reset_index(name="cantidad")
+        .sort_values("bucket", ignore_index=True)
+    )
+
+
+def _serie_temporal_rango_por_granularidad(df: pd.DataFrame, granularidad: str) -> pd.DataFrame:
+    """Agrupa registros de un rango por unidad temporal y alinea por posición de aparición."""
+    if "_fecha" not in df.columns:
+        return pd.DataFrame(columns=["bucket", "periodo_label", "cantidad"])
+
+    df_valid = df[df["_fecha"].notna()].copy()
+    if df_valid.empty:
+        return pd.DataFrame(columns=["bucket", "periodo_label", "cantidad"])
+
+    fechas = pd.to_datetime(df_valid["_fecha"])
+
+    if granularidad == "semestres":
+        start_month = np.where(fechas.dt.month <= 6, 1, 7)
+        df_valid["bucket_base"] = pd.to_datetime({"year": fechas.dt.year, "month": start_month, "day": 1})
+    elif granularidad == "cuatrimestres":
+        start_month = ((fechas.dt.month - 1) // 4) * 4 + 1
+        df_valid["bucket_base"] = pd.to_datetime({"year": fechas.dt.year, "month": start_month, "day": 1})
+    elif granularidad == "trimestres":
+        start_month = ((fechas.dt.month - 1) // 3) * 3 + 1
+        df_valid["bucket_base"] = pd.to_datetime({"year": fechas.dt.year, "month": start_month, "day": 1})
+    elif granularidad == "bimestres":
+        start_month = ((fechas.dt.month - 1) // 2) * 2 + 1
+        df_valid["bucket_base"] = pd.to_datetime({"year": fechas.dt.year, "month": start_month, "day": 1})
+    elif granularidad == "meses":
+        df_valid["bucket_base"] = fechas.dt.to_period("M").dt.to_timestamp()
+    elif granularidad == "semanas":
+        df_valid["bucket_base"] = (fechas - pd.to_timedelta(fechas.dt.weekday, unit="D")).dt.normalize()
+    elif granularidad == "dias":
+        df_valid["bucket_base"] = fechas.dt.normalize()
+    else:
+        raise ValueError(f"Granularidad no soportada en rangos: {granularidad}")
+
+    agrupado = (
+        df_valid.groupby("bucket_base")
+        .size()
+        .reset_index(name="cantidad")
+        .sort_values("bucket_base", ignore_index=True)
+    )
+    agrupado["bucket"] = range(1, len(agrupado) + 1)
+    agrupado["periodo_label"] = agrupado["bucket"].map(lambda x: _label_periodo_rango(granularidad, int(x)))
+    return agrupado[["bucket", "periodo_label", "cantidad"]]
 
 
 # ====================================================================
@@ -504,6 +639,125 @@ class StatsEngine:
             )
         result = pd.concat([result, pd.DataFrame([total])], ignore_index=True)
         return result
+
+    def comparativo_temporal_anual(
+        self,
+        anio_actual: int,
+        anio_anterior: int,
+        granularidad: str = "meses",
+    ) -> pd.DataFrame:
+        """Compara dos años por una granularidad temporal configurable."""
+        if granularidad == "meses":
+            mensual = self.comparativo_mensual(anio_actual, anio_anterior).copy()
+            mensual["bucket"] = mensual["mes_num"]
+            mensual["periodo_label"] = mensual["mes_label"].map(
+                lambda valor: valor.upper() if valor != "TOTAL" else "TOTAL"
+            )
+            return mensual[[
+                "bucket",
+                "periodo_label",
+                "cantidad_anterior",
+                "cantidad_actual",
+                "diferencia",
+                "pct_variacion",
+            ]]
+
+        df_ant = self.df[self.df["_anio"] == anio_anterior]
+        df_act = self.df[self.df["_anio"] == anio_actual]
+
+        serie_ant = _serie_temporal_por_granularidad(df_ant, granularidad)
+        serie_act = _serie_temporal_por_granularidad(df_act, granularidad)
+
+        labels_ant = dict(zip(serie_ant["bucket"], serie_ant["bucket_label"]))
+        labels_act = dict(zip(serie_act["bucket"], serie_act["bucket_label"]))
+        buckets = sorted(set(serie_ant["bucket"].tolist()) | set(serie_act["bucket"].tolist()))
+
+        conteo_ant = dict(zip(serie_ant["bucket"], serie_ant["cantidad"]))
+        conteo_act = dict(zip(serie_act["bucket"], serie_act["cantidad"]))
+
+        resultado = []
+        for bucket in buckets:
+            cant_ant = int(conteo_ant.get(bucket, 0))
+            cant_act = int(conteo_act.get(bucket, 0))
+            resultado.append({
+                "bucket": bucket,
+                "periodo_label": labels_ant.get(bucket) or labels_act.get(bucket) or str(bucket),
+                "cantidad_anterior": cant_ant,
+                "cantidad_actual": cant_act,
+                "diferencia": cant_act - cant_ant,
+                "pct_variacion": _pct_variacion(cant_ant, cant_act),
+            })
+
+        result = pd.DataFrame(resultado)
+        total_ant = int(result["cantidad_anterior"].sum()) if not result.empty else 0
+        total_act = int(result["cantidad_actual"].sum()) if not result.empty else 0
+        total_bucket = "99-99" if granularidad == "dias" else (max(buckets) + 1 if buckets else 1)
+        total = {
+            "bucket": total_bucket,
+            "periodo_label": "TOTAL",
+            "cantidad_anterior": total_ant,
+            "cantidad_actual": total_act,
+            "diferencia": total_act - total_ant,
+            "pct_variacion": _pct_variacion(total_ant, total_act),
+        }
+        return pd.concat([result, pd.DataFrame([total])], ignore_index=True)
+
+    def comparativo_temporal_rango(
+        self,
+        fecha_actual_desde: date,
+        fecha_actual_hasta: date,
+        fecha_anterior_desde: date,
+        fecha_anterior_hasta: date,
+        granularidad: str = "dias",
+    ) -> pd.DataFrame:
+        """Compara dos rangos con granularidad temporal configurable, alineando por posición."""
+        if granularidad == "dias":
+            diario = self.comparativo_diario_rango(
+                fecha_actual_desde,
+                fecha_actual_hasta,
+                fecha_anterior_desde,
+                fecha_anterior_hasta,
+            ).copy()
+            diario["periodo_label"] = diario["dia_label"]
+            return diario[["bucket" if "bucket" in diario.columns else "dia", "periodo_label", "cantidad_anterior", "cantidad_actual", "diferencia", "pct_variacion"]].rename(columns={"dia": "bucket"})
+
+        df_ant = self._filtrar_df_por_rango_fecha(fecha_anterior_desde, fecha_anterior_hasta)
+        df_act = self._filtrar_df_por_rango_fecha(fecha_actual_desde, fecha_actual_hasta)
+
+        serie_ant = _serie_temporal_rango_por_granularidad(df_ant, granularidad)
+        serie_act = _serie_temporal_rango_por_granularidad(df_act, granularidad)
+
+        buckets = sorted(set(serie_ant["bucket"].tolist()) | set(serie_act["bucket"].tolist()))
+        labels_ant = dict(zip(serie_ant["bucket"], serie_ant["periodo_label"]))
+        labels_act = dict(zip(serie_act["bucket"], serie_act["periodo_label"]))
+        conteo_ant = dict(zip(serie_ant["bucket"], serie_ant["cantidad"]))
+        conteo_act = dict(zip(serie_act["bucket"], serie_act["cantidad"]))
+
+        resultado = []
+        for bucket in buckets:
+            cant_ant = int(conteo_ant.get(bucket, 0))
+            cant_act = int(conteo_act.get(bucket, 0))
+            resultado.append({
+                "bucket": bucket,
+                "periodo_label": labels_ant.get(bucket) or labels_act.get(bucket) or _label_periodo_rango(granularidad, int(bucket)),
+                "cantidad_anterior": cant_ant,
+                "cantidad_actual": cant_act,
+                "diferencia": cant_act - cant_ant,
+                "pct_variacion": _pct_variacion(cant_ant, cant_act),
+            })
+
+        result = pd.DataFrame(resultado)
+        total_ant = int(result["cantidad_anterior"].sum()) if not result.empty else 0
+        total_act = int(result["cantidad_actual"].sum()) if not result.empty else 0
+        total = {
+            "bucket": (max(buckets) + 1) if buckets else 1,
+            "periodo_label": "TOTAL",
+            "cantidad_anterior": total_ant,
+            "cantidad_actual": total_act,
+            "diferencia": total_act - total_ant,
+            "pct_variacion": _pct_variacion(total_ant, total_act),
+        }
+        return pd.concat([result, pd.DataFrame([total])], ignore_index=True)
 
     # ====================================================================
     # Filtrado dinámico

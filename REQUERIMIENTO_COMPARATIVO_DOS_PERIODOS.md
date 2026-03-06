@@ -16,11 +16,12 @@ Incorporar en la página de comparativo de la aplicación la posibilidad de comp
   - total de registros del Periodo B
   - diferencia absoluta entre ambos
   - variación porcentual de B respecto de A
+  - comparativo temporal por semestres, cuatrimestres, trimestres, bimestres, meses, semanas y días
   - comparación por delito
   - tabla comparativa por comisaría entre ambos periodos
   - comparación por otras dimensiones configurables
   - evolución diaria alineada por posición dentro del rango
-  - exportación de resultados en CSV
+  - exportación de resultados en CSV y Excel
 
 ## Cambios de backend y datos
 
@@ -34,6 +35,24 @@ Incorporar en la página de comparativo de la aplicación la posibilidad de comp
 - La comparación usa esta convención:
   - diferencia = total Periodo B menos total Periodo A
   - porcentaje = variación de B respecto de A
+- En el modo anual, el comparativo temporal debe poder agruparse por:
+  - semestres
+  - cuatrimestres
+  - trimestres
+  - bimestres
+  - meses
+  - semanas
+  - días
+- En el modo rangos de fechas, el comparativo temporal también debe poder agruparse por:
+  - semestres
+  - cuatrimestres
+  - trimestres
+  - bimestres
+  - meses
+  - semanas
+  - días
+- Para semanas y días, la comparación se realiza por posición calendario dentro del año comparado.
+- Para rangos de fechas, la comparación temporal se alinea por posición relativa del tramo dentro de cada rango seleccionado.
 - Se agrega una tabla específica por comisaría o jurisdicción, comparando los totales de hechos de la misma dependencia entre ambos periodos.
 - La tabla por comisaría debe agrupar por JURIS_HECH o por la etiqueta visible de comisaría utilizada en la interfaz, manteniendo consistencia con los filtros actuales.
 - Cada fila de la tabla por comisaría debe incluir:
@@ -42,6 +61,15 @@ Incorporar en la página de comparativo de la aplicación la posibilidad de comp
   - total del Periodo B
   - diferencia absoluta
   - variación porcentual
+- La nomenclatura visible debe seguir un formato operativo abreviado y consistente:
+  - CRIA. 1°
+  - SUBCRIA. LASTENIA
+  - DEST. EL MOLLAR
+  - 1ER SEMESTRE
+  - 2DO TRIM.
+  - BIM. 03
+  - SEM. 08
+  - DIA 12
 - Ejemplo esperado:
   - Cria 1 | 01/03 al 07/03 = 10 | 08/03 al 14/03 = 11 | diferencia = +1
 - Regla de variación porcentual cuando el Periodo A tiene cero registros:
@@ -61,6 +89,16 @@ Incorporar en la página de comparativo de la aplicación la posibilidad de comp
 - La página comparativo tendrá dos modos:
   - Años
   - Rangos de fechas
+- En modo Años, el comparativo temporal debe permitir seleccionar la granularidad del análisis:
+  - Semestres
+  - Cuatrimestres
+  - Trimestres
+  - Bimestres
+  - Meses
+  - Semanas
+  - Días
+- En modo Rangos de fechas, el comparativo temporal debe permitir seleccionar la granularidad del análisis con las mismas opciones.
+- Cuando la serie temporal por semanas o días sea extensa, la interfaz debe ofrecer un filtro para mostrar solo un subconjunto visible del tramo analizado, sin alterar la exportación completa.
 - En modo rangos de fechas se mostrarán cuatro selectores:
   - Desde A
   - Hasta A
@@ -72,11 +110,13 @@ Incorporar en la página de comparativo de la aplicación la posibilidad de comp
   - si las duraciones son distintas, se informa al usuario con mensaje explicativo
 - La pantalla incluirá:
   - métricas resumen
+  - gráfico y tabla comparativa temporal según granularidad elegida en modo Años
+  - gráfico y tabla comparativa temporal según granularidad elegida en modo Rangos
   - gráfico de evolución diaria
   - gráfico comparativo por delito
   - tabla comparativa por comisaría
   - tabla detallada por dimensión
-  - descarga CSV de evolución diaria y tabla detallada
+  - descarga CSV y Excel de comparativos temporales, tabla detallada y tabla por comisaría
 
 ## Validaciones y casos borde
 
@@ -93,10 +133,13 @@ Incorporar en la página de comparativo de la aplicación la posibilidad de comp
 - Comparación de dos periodos del mismo largo en meses distintos.
 - Comparación de periodos de distinto largo.
 - Comparación con solapamiento parcial.
+- Comparación anual por semestres, cuatrimestres, trimestres, bimestres, meses, semanas y días.
+- Comparación por rangos con semestres, cuatrimestres, trimestres, bimestres, meses, semanas y días.
+- Verificación del filtro de subconjunto visible cuando la serie por semanas o días supere una cantidad razonable de puntos.
 - Comparación bajo una sola unidad regional.
 - Comparación bajo una sola comisaría.
 - Verificación de tabla por comisaría con varias dependencias y con dependencias sin registros en uno de los dos periodos.
-- Exportación CSV con resultados vacíos o parciales.
+- Exportación CSV y Excel con resultados vacíos o parciales.
 
 ## Riesgos y decisiones cerradas
 
@@ -104,6 +147,9 @@ Incorporar en la página de comparativo de la aplicación la posibilidad de comp
 - Se decidió permitir periodos solapados con advertencia.
 - Se decidió permitir periodos de distinta duración con advertencia.
 - Se decidió alinear la evolución por posición relativa diaria y no por fecha calendario exacta.
+- Se decidió que el modo anual permita cambiar la granularidad temporal entre semestre, cuatrimestre, trimestre, bimestre, mes, semana y día.
+- Se decidió que el modo Rangos permita la misma selección de granularidad temporal, alineando los tramos por posición relativa.
+- Se decidió que las series largas por semanas o días puedan filtrarse visualmente por subconjuntos sin afectar el dataset exportado.
 - Se decidió mantener la convención de 100.0 cuando la base es cero y el periodo comparado sí tiene registros.
 - Se decidió que la tabla por comisaría compare siempre la misma dependencia entre ambos rangos, aunque en uno de ellos no tenga registros.
 

@@ -2,8 +2,10 @@
 Página: Comparativo entre Períodos.
 Informe 6.10 — Compara por año o por rangos de fechas.
 """
+from io import BytesIO
 from datetime import timedelta
 
+import pandas as pd
 import streamlit as st
 
 from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar
@@ -34,7 +36,51 @@ def render():
     _render_comparativo_rangos(df_filtered, engine, charts)
 
 
+def _granularidades_temporales():
+    return {
+        "Semestres": "semestres",
+        "Cuatrimestres": "cuatrimestres",
+        "Trimestres": "trimestres",
+        "Bimestres": "bimestres",
+        "Meses": "meses",
+        "Semanas": "semanas",
+        "Días": "dias",
+    }
+
+
+def _filtrar_subserie_temporal(df, granularidad, key_prefix):
+    detalle = df[df["periodo_label"] != "TOTAL"].copy()
+    total = df[df["periodo_label"] == "TOTAL"].copy()
+
+    if granularidad not in {"semanas", "dias"} or len(detalle) <= 16:
+        return df
+
+    etiqueta = "semanas" if granularidad == "semanas" else "días"
+    inicio, fin = st.slider(
+        f"Subconjunto visible de {etiqueta}",
+        min_value=1,
+        max_value=len(detalle),
+        value=(1, min(16, len(detalle))),
+        key=f"{key_prefix}_subserie",
+    )
+    st.caption(f"Mostrando {inicio} a {fin} de {len(detalle)} {etiqueta}.")
+    filtrado = detalle.iloc[inicio - 1:fin].copy()
+    if not total.empty:
+        filtrado = pd.concat([filtrado, total], ignore_index=True)
+    return filtrado
+
+
+def _to_excel_bytes(sheets: dict[str, pd.DataFrame]) -> bytes:
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        for nombre, dataframe in sheets.items():
+            dataframe.to_excel(writer, sheet_name=nombre[:31], index=False)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
 def _render_comparativo_anual(engine, charts):
+    granularidades = _granularidades_temporales()
     anios = sorted(engine.df["_anio"].dropna().unique().astype(int).tolist())
 
     if len(anios) < 2:
@@ -64,8 +110,8 @@ def _render_comparativo_anual(engine, charts):
     pct_var = round((diferencia / total_ant * 100), 2) if total_ant > 0 else (100.0 if total_act > 0 else 0.0)
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric(f"Delitos {anio_anterior}", f"{total_ant:,}")
-    c2.metric(f"Delitos {anio_actual}", f"{total_act:,}")
+    c1.metric(f"Año base {anio_anterior}", f"{total_ant:,}")
+    c2.metric(f"Año comparado {anio_actual}", f"{total_act:,}")
     c3.metric("Diferencia", f"{diferencia:+,}", delta=f"{pct_var:+.1f}%")
     c4.metric(
         "Tendencia",
@@ -74,27 +120,39 @@ def _render_comparativo_anual(engine, charts):
 
     st.divider()
 
-    tab_mensual, tab_delitos, tab_tabla = st.tabs([
-        "📅 Comparativo Mensual",
+    tab_temporal, tab_delitos, tab_tabla = st.tabs([
+        "📅 Comparativo Temporal",
         "📋 Comparativo por Delito",
         "📊 Tabla Detallada",
     ])
 
-    with tab_mensual:
-        st.markdown(f"### Comparativo Mensual: {anio_anterior} vs {anio_actual}")
-        df_comp_mes = engine.comparativo_mensual(anio_actual, anio_anterior)
+    with tab_temporal:
+        granularidad_label = st.selectbox(
+            "Agrupar por",
+            list(granularidades.keys()),
+            index=4,
+            key="granularidad_temporal_anual",
+        )
+        granularidad = granularidades[granularidad_label]
+        st.markdown(f"### Comparativo por {granularidad_label}: {anio_anterior} vs {anio_actual}")
+        df_comp_temporal = engine.comparativo_temporal_anual(anio_actual, anio_anterior, granularidad)
+        df_comp_temporal_view = _filtrar_subserie_temporal(df_comp_temporal, granularidad, "anual_temporal")
+        mostrar_texto = granularidad in {"semestres", "cuatrimestres", "trimestres", "bimestres", "meses"}
 
-        if len(df_comp_mes) > 1:
+        if len(df_comp_temporal_view) > 1:
             fig = charts.lineas_comparativo(
-                df_comp_mes,
-                f"Evolución Mensual — {anio_anterior} vs {anio_actual}",
+                df_comp_temporal_view,
+                f"Evolución por {granularidad_label} — {anio_anterior} vs {anio_actual}",
+                col_x="periodo_label",
                 label_y1=str(anio_anterior),
                 label_y2=str(anio_actual),
+                mostrar_texto=mostrar_texto,
+                height=520 if granularidad in {"semanas", "dias"} else 450,
             )
             st.plotly_chart(fig, use_container_width=True)
 
-            st.markdown("#### Tabla comparativa mensual")
-            _tabla_comparativa(df_comp_mes, "mes_label", str(anio_anterior), str(anio_actual))
+            st.markdown(f"#### Tabla comparativa por {granularidad_label.lower()}")
+            _tabla_comparativa(df_comp_temporal_view, "periodo_label", str(anio_anterior), str(anio_actual))
 
     with tab_delitos:
         st.markdown(f"### Comparativo por Tipo de Delito: {anio_anterior} vs {anio_actual}")
@@ -124,16 +182,33 @@ def _render_comparativo_anual(engine, charts):
         _tabla_comparativa(df_comp, "categoria", str(anio_anterior), str(anio_actual))
 
     st.divider()
-    csv = engine.comparativo_mensual(anio_actual, anio_anterior).to_csv(index=False).encode("utf-8")
-    st.download_button(
-        "⬇️ Descargar comparativo mensual (CSV)",
-        csv,
-        f"comparativo_{anio_anterior}_vs_{anio_actual}.csv",
-        "text/csv",
-    )
+    st.markdown("### Exportar resultados")
+    df_export_temporal = engine.comparativo_temporal_anual(anio_actual, anio_anterior, granularidad)
+    csv = df_export_temporal.to_csv(index=False).encode("utf-8")
+    xlsx = _to_excel_bytes({
+        "Comparativo temporal": df_export_temporal,
+        "Comparativo delito": df_comp_del,
+        "Detalle": df_comp,
+    })
+    col_export_csv, col_export_xlsx = st.columns(2)
+    with col_export_csv:
+        st.download_button(
+            "⬇️ Descargar comparativo temporal (CSV)",
+            csv,
+            f"comparativo_{granularidad}_{anio_anterior}_vs_{anio_actual}.csv",
+            "text/csv",
+        )
+    with col_export_xlsx:
+        st.download_button(
+            "⬇️ Descargar comparativo anual (Excel)",
+            xlsx,
+            f"comparativo_{granularidad}_{anio_anterior}_vs_{anio_actual}.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
 
 
 def _render_comparativo_rangos(df_filtered, engine, charts):
+    granularidades = _granularidades_temporales()
     fechas = df_filtered["_fecha"].dropna() if "_fecha" in df_filtered.columns else []
     if len(fechas) == 0:
         st.warning("No hay fechas válidas en el conjunto filtrado para comparar rangos.")
@@ -144,7 +219,7 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
     desde_a_default, hasta_a_default, desde_b_default, hasta_b_default = _rangos_por_defecto(fecha_min, fecha_max)
 
     st.markdown("### Comparativo por Rangos de Fechas")
-    st.caption("Periodo A se toma como base. Periodo B se compara contra A. La evolución diaria se alinea por posición dentro de cada rango.")
+    st.caption("Periodo A se toma como base. Periodo B se compara contra A. La comparación temporal se alinea por posición relativa dentro de cada rango.")
 
     col_a, col_b = st.columns(2)
     with col_a:
@@ -194,10 +269,18 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
 
     label_a = _formatear_periodo(desde_a, hasta_a)
     label_b = _formatear_periodo(desde_b, hasta_b)
+    granularidad_label = st.selectbox(
+        "Granularidad temporal del rango",
+        list(granularidades.keys()),
+        index=6,
+        key="granularidad_temporal_rango",
+    )
+    granularidad = granularidades[granularidad_label]
 
     df_comp_del = engine.comparativo_periodos_rango(desde_b, hasta_b, desde_a, hasta_a, "DELITO")
     df_comp_com = engine.comparativo_comisarias_rango(desde_b, hasta_b, desde_a, hasta_a)
-    df_comp_dias = engine.comparativo_diario_rango(desde_b, hasta_b, desde_a, hasta_a)
+    df_comp_temporal = engine.comparativo_temporal_rango(desde_b, hasta_b, desde_a, hasta_a, granularidad)
+    df_comp_temporal_view = _filtrar_subserie_temporal(df_comp_temporal, granularidad, "rangos_temporal")
     total = df_comp_del[df_comp_del["categoria"] == "TOTAL"].iloc[0]
 
     total_a = int(total["cantidad_anterior"])
@@ -210,7 +293,7 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
     c2.metric("Periodo B", f"{total_b:,}", delta=label_b)
     c3.metric("Diferencia", f"{diferencia:+,}", delta=f"{pct_var:+.1f}%")
     c4.metric(
-        "Comparabilidad",
+        "Duración",
         "Misma duración" if dias_a == dias_b else "Duración distinta",
         delta=f"{dias_a}d vs {dias_b}d",
     )
@@ -218,24 +301,29 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
     st.divider()
 
     tab_evolucion, tab_delitos, tab_comisarias, tab_tabla = st.tabs([
-        "📅 Evolución diaria",
+        "📅 Comparativo Temporal",
         "📋 Comparativo por Delito",
         "🏛️ Comparativo por Comisaría",
         "📊 Tabla Detallada",
     ])
 
     with tab_evolucion:
-        st.markdown(f"### Evolución diaria alineada: {label_a} vs {label_b}")
+        st.markdown(f"### Comparativo por {granularidad_label}: {label_a} vs {label_b}")
+        mostrar_texto = granularidad in {"semestres", "cuatrimestres", "trimestres", "bimestres", "meses"}
+        if granularidad in {"semanas", "dias"}:
+            st.caption("El subconjunto visible solo afecta la vista actual. Las exportaciones incluyen la serie completa.")
         fig = charts.lineas_comparativo(
-            df_comp_dias,
-            f"Evolución diaria — {label_a} vs {label_b}",
-            col_x="dia_label",
+            df_comp_temporal_view,
+            f"Comparativo por {granularidad_label} — {label_a} vs {label_b}",
+            col_x="periodo_label",
             label_y1="Periodo A",
             label_y2="Periodo B",
+            mostrar_texto=mostrar_texto,
+            height=520 if granularidad in {"semanas", "dias"} else 450,
         )
         st.plotly_chart(fig, use_container_width=True)
-        st.markdown("#### Tabla comparativa diaria")
-        _tabla_evolucion_diaria(df_comp_dias, label_a, label_b)
+        st.markdown(f"#### Tabla comparativa por {granularidad_label.lower()}")
+        _tabla_comparativa(df_comp_temporal_view, "periodo_label", label_a, label_b)
 
     with tab_delitos:
         st.markdown(f"### Comparativo por Tipo de Delito: {label_a} vs {label_b}")
@@ -292,30 +380,56 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
         _tabla_comparativa(df_comp, "categoria", label_a, label_b)
 
     st.divider()
-    col_export_1, col_export_2, col_export_3 = st.columns(3)
-    with col_export_1:
-        csv_dias = df_comp_dias.to_csv(index=False).encode("utf-8")
+    st.markdown("### Exportar resultados")
+    slug_a = _slug_periodo(desde_a, hasta_a)
+    slug_b = _slug_periodo(desde_b, hasta_b)
+    excel_temporal = _to_excel_bytes({"Comparativo temporal": df_comp_temporal})
+    excel_detalle = _to_excel_bytes({"Detalle": df_comp})
+    excel_comisarias = _to_excel_bytes({"Comisarias": df_comp_com})
+    col_csv_1, col_xlsx_1 = st.columns(2)
+    with col_csv_1:
         st.download_button(
-            "⬇️ Descargar evolución diaria (CSV)",
-            csv_dias,
-            f"comparativo_diario_{_slug_periodo(desde_a, hasta_a)}_vs_{_slug_periodo(desde_b, hasta_b)}.csv",
+            "⬇️ Comparativo temporal (CSV)",
+            df_comp_temporal.to_csv(index=False).encode("utf-8"),
+            f"comparativo_{granularidad}_{slug_a}_vs_{slug_b}.csv",
             "text/csv",
         )
-    with col_export_2:
-        csv_detalle = df_comp.to_csv(index=False).encode("utf-8")
+    with col_xlsx_1:
         st.download_button(
-            "⬇️ Descargar tabla detallada (CSV)",
-            csv_detalle,
-            f"comparativo_detalle_{dimension.lower()}_{_slug_periodo(desde_a, hasta_a)}_vs_{_slug_periodo(desde_b, hasta_b)}.csv",
+            "⬇️ Comparativo temporal (Excel)",
+            excel_temporal,
+            f"comparativo_{granularidad}_{slug_a}_vs_{slug_b}.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    col_csv_2, col_xlsx_2 = st.columns(2)
+    with col_csv_2:
+        st.download_button(
+            "⬇️ Tabla detallada (CSV)",
+            df_comp.to_csv(index=False).encode("utf-8"),
+            f"comparativo_detalle_{dimension.lower()}_{slug_a}_vs_{slug_b}.csv",
             "text/csv",
         )
-    with col_export_3:
-        csv_comisarias = df_comp_com.to_csv(index=False).encode("utf-8")
+    with col_xlsx_2:
         st.download_button(
-            "⬇️ Descargar tabla por comisaría (CSV)",
-            csv_comisarias,
-            f"comparativo_comisarias_{_slug_periodo(desde_a, hasta_a)}_vs_{_slug_periodo(desde_b, hasta_b)}.csv",
+            "⬇️ Tabla detallada (Excel)",
+            excel_detalle,
+            f"comparativo_detalle_{dimension.lower()}_{slug_a}_vs_{slug_b}.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    col_csv_3, col_xlsx_3 = st.columns(2)
+    with col_csv_3:
+        st.download_button(
+            "⬇️ Tabla por comisaría (CSV)",
+            df_comp_com.to_csv(index=False).encode("utf-8"),
+            f"comparativo_comisarias_{slug_a}_vs_{slug_b}.csv",
             "text/csv",
+        )
+    with col_xlsx_3:
+        st.download_button(
+            "⬇️ Tabla por comisaría (Excel)",
+            excel_comisarias,
+            f"comparativo_comisarias_{slug_a}_vs_{slug_b}.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
 
@@ -409,7 +523,7 @@ def _rangos_solapados(desde_a, hasta_a, desde_b, hasta_b):
 def _formatear_periodo(desde, hasta):
     if desde == hasta:
         return desde.strftime("%d/%m/%Y")
-    return f"{desde.strftime('%d/%m/%Y')} al {hasta.strftime('%d/%m/%Y')}"
+    return f"DEL {desde.strftime('%d/%m/%Y')} AL {hasta.strftime('%d/%m/%Y')}"
 
 
 def _slug_periodo(desde, hasta):

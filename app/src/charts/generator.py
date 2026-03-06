@@ -195,10 +195,16 @@ class ChartGenerator:
         label_y1: str = "Año anterior",
         label_y2: str = "Año actual",
         height: int = 450,
+        mostrar_texto: bool = True,
+        xaxis_title: str = "Periodo",
     ) -> go.Figure:
         """Gráfico de líneas comparando dos períodos."""
         # Excluir fila TOTAL si existe
         df_plot = df[df[col_x] != "TOTAL"].copy()
+
+        text_y1 = df_plot[col_y1].apply(lambda x: f"{int(x):,}") if mostrar_texto else None
+        text_y2 = df_plot[col_y2].apply(lambda x: f"{int(x):,}") if mostrar_texto else None
+        mode = "lines+markers+text" if mostrar_texto else "lines+markers"
 
         fig = go.Figure()
 
@@ -206,10 +212,10 @@ class ChartGenerator:
             x=df_plot[col_x],
             y=df_plot[col_y1],
             name=label_y1,
-            mode="lines+markers+text",
+            mode=mode,
             line=dict(color=COLORES["bar_blue"], width=2.5),
             marker=dict(size=8),
-            text=df_plot[col_y1].apply(lambda x: f"{int(x):,}"),
+            text=text_y1,
             textposition="top center",
             textfont=dict(size=10, color="#f0f0f0"),
         ))
@@ -218,19 +224,22 @@ class ChartGenerator:
             x=df_plot[col_x],
             y=df_plot[col_y2],
             name=label_y2,
-            mode="lines+markers+text",
+            mode=mode,
             line=dict(color=COLORES["bar_red"], width=2.5),
             marker=dict(size=8),
-            text=df_plot[col_y2].apply(lambda x: f"{int(x):,}"),
+            text=text_y2,
             textposition="bottom center",
             textfont=dict(size=10, color="#f0f0f0"),
         ))
 
         fig.update_layout(
-            xaxis_title="Mes",
+            xaxis_title=xaxis_title,
             yaxis_title="Cantidad de Delitos",
             hovermode="x unified",
         )
+
+        if len(df_plot) > 20:
+            fig.update_xaxes(tickangle=-45)
 
         return _apply_base_layout(fig, titulo, height)
 
