@@ -23,6 +23,7 @@ from app.config.settings import (
     COMISARIAS_POR_REGION,
     UNIDADES_REGIONALES,
 )
+from app.src.ui.editorial import close_stage, open_stage, render_hero, render_panel, render_section_heading
 
 # ====================================================================
 # Clasificación de delitos en ROBOS / HURTOS
@@ -209,15 +210,17 @@ def _generar_tabla_html(df: pd.DataFrame, titulo_ur: str) -> str:
 # ====================================================================
 
 def render():
-    st.title("🔫 Robos y Hurtos por Regional")
-    st.markdown(
-        "Cuadro resumen de **Robos** y **Hurtos** desglosado por comisaría "
-        "para cada Unidad Regional."
-    )
-
     df = cargar_datos()
     df_filtered = render_filtros_sidebar(df)
     engine = get_engine(df_filtered)
+
+    render_hero(
+        "Delitos patrimoniales",
+        "Robos y hurtos por regional",
+        "Página de cuadro resumen por unidad regional y comisaría para exponer robos y hurtos sobre la base filtrada vigente.",
+        chips=["Resumen por regional", "Detalle por comisaría", "Exportación CSV"],
+        seq=1,
+    )
 
     mostrar_metricas_header(engine)
     st.divider()
@@ -239,6 +242,21 @@ def render():
     c2.metric("Total Hurtos", f"{total_hurtos:,}")
     c3.metric("Total General", f"{total_robos + total_hurtos:,}")
 
+    render_section_heading(
+        2,
+        "Lectura principal",
+        "Balance patrimonial",
+        "Las métricas abren la página y anticipan el peso relativo entre robos y hurtos antes del detalle regional.",
+    )
+    delito_dominante = "Robos" if total_robos >= total_hurtos else "Hurtos"
+    render_panel(
+        2,
+        "Síntesis",
+        f"Predominan {delito_dominante}",
+        f"La diferencia entre ambos grupos es de {abs(total_robos - total_hurtos):,} hechos dentro de la muestra filtrada.",
+        tone="accent",
+    )
+
     st.divider()
 
     # Determinar qué URs mostrar según el filtro de UR del sidebar
@@ -246,6 +264,14 @@ def render():
 
     # Generar tablas por cada UR
     tablas_csv = []
+
+    open_stage(
+        3,
+        "Escena analítica",
+        "Cuadros por unidad regional",
+        "La secuencia central presenta cada unidad regional como bloque independiente para una lectura rápida por comisaría.",
+        stage_class="analysis-stage",
+    )
 
     for ur_code, titulo_ur in _UR_ORDEN:
         if ur_code not in urs_en_datos:
@@ -270,10 +296,25 @@ def render():
         tabla_export.insert(0, "UNIDAD_REGIONAL", titulo_ur)
         tablas_csv.append(tabla_export)
 
+    close_stage()
+
     # ---- Exportar ----
     if tablas_csv:
         st.divider()
-        st.markdown("### 📥 Exportar Datos")
+        render_section_heading(
+            4,
+            "Cierre documental",
+            "Exportación patrimonial",
+            "La salida final consolida todas las regionales en un único archivo para distribución, respaldo o archivo.",
+        )
+        open_stage(
+            4,
+            "Archivo final",
+            "Descarga consolidada",
+            "Incluye todas las tablas regionales generadas en la vista actual.",
+            stage_class="export-stage",
+        )
+        st.markdown("### Descarga documental")
         df_export = pd.concat(tablas_csv, ignore_index=True)
         # Agregar fila total por UR
         csv = df_export.to_csv(index=False).encode("utf-8")
@@ -283,3 +324,4 @@ def render():
             file_name="robos_y_hurtos_por_regional.csv",
             mime="text/csv",
         )
+        close_stage()

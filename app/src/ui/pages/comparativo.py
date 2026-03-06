@@ -4,6 +4,7 @@ Informe 6.10 — Compara por año o por rangos de fechas.
 """
 from io import BytesIO
 from datetime import timedelta
+from html import escape
 
 import pandas as pd
 import streamlit as st
@@ -12,19 +13,111 @@ from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar
 from app.src.charts.generator import ChartGenerator
 
 
-def render():
-    st.title("📈 Comparativo entre Períodos")
-    st.markdown("Comparación de delitos por años o por dos rangos de fechas")
+def _render_editorial_panel(kicker, titulo, cuerpo, tone=""):
+    tone_class = f" {tone}" if tone else ""
+    st.markdown(
+        f"""
+        <section class="editorial-panel{tone_class}">
+            <div class="editorial-kicker">{escape(kicker)}</div>
+            <h3>{escape(titulo)}</h3>
+            <p>{escape(cuerpo)}</p>
+        </section>
+        """,
+        unsafe_allow_html=True,
+    )
 
+
+def _render_section_heading(seq, kicker, titulo, cuerpo):
+    st.markdown(
+        f"""
+        <section class="editorial-section-heading scene-seq seq-{seq}">
+            <div class="editorial-kicker">{escape(kicker)}</div>
+            <h2>{escape(titulo)}</h2>
+            <p>{escape(cuerpo)}</p>
+        </section>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _render_sequenced_panel(seq, kicker, titulo, cuerpo, tone=""):
+    tone_class = f" {tone}" if tone else ""
+    st.markdown(
+        f"""
+        <section class="editorial-panel scene-seq seq-{seq}{tone_class}">
+            <div class="editorial-kicker">{escape(kicker)}</div>
+            <h3>{escape(titulo)}</h3>
+            <p>{escape(cuerpo)}</p>
+        </section>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _open_scene_stage(seq, kicker, titulo, cuerpo, stage_class=""):
+    extra_class = f" {stage_class}" if stage_class else ""
+    st.markdown(
+        f"""
+        <section class="scene-stage scene-seq seq-{seq}{extra_class}">
+            <div class="editorial-kicker">{escape(kicker)}</div>
+            <h3>{escape(titulo)}</h3>
+            <p>{escape(cuerpo)}</p>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _close_scene_stage():
+    st.markdown("</section>", unsafe_allow_html=True)
+
+
+def _render_hero():
+    st.markdown(
+        """
+        <section class="editorial-hero scene-seq seq-1">
+            <div class="editorial-kicker">Informe comparativo</div>
+            <h1>Comparativo entre períodos</h1>
+            <p class="editorial-lead">
+                Vista preparada para contraste ejecutivo entre cortes temporales. La pantalla combina lectura de tendencia,
+                composición por delito, desempeño por comisaría y exportación inmediata para revisión o exposición.
+            </p>
+            <div class="editorial-meta-row">
+                <span class="editorial-chip">Comparación anual y por rangos</span>
+                <span class="editorial-chip">Series temporales con granularidad operativa</span>
+                <span class="editorial-chip">Exportación CSV y Excel</span>
+            </div>
+        </section>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render():
     df = cargar_datos()
     df_filtered = render_filtros_sidebar(df, excluir={"anio", "fecha_rango"})
     engine = get_engine(df_filtered)
     charts = ChartGenerator()
 
+    _render_hero()
+
+    _render_section_heading(
+        2,
+        "Modo de análisis",
+        "Definición del contraste",
+        "Primero se define el tipo de contraste para ordenar la lectura y las métricas de apertura.",
+    )
     modo = st.radio(
         "Modo de comparación",
         ["Años", "Rangos de fechas"],
         horizontal=True,
+    )
+
+    _render_sequenced_panel(
+        2,
+        "Marco de lectura",
+        "Cómo interpretar esta pantalla",
+        "El modo anual evalúa variaciones entre ejercicios. El modo por rangos contrasta ventanas operativas concretas y alinea la evolución por posición relativa dentro de cada tramo.",
+        tone="accent",
     )
 
     st.divider()
@@ -63,7 +156,7 @@ def _filtrar_subserie_temporal(df, granularidad, key_prefix):
         value=(1, min(16, len(detalle))),
         key=f"{key_prefix}_subserie",
     )
-    st.caption(f"Mostrando {inicio} a {fin} de {len(detalle)} {etiqueta}.")
+    st.caption(f"Vista parcial: {inicio} a {fin} de {len(detalle)} {etiqueta}.")
     filtrado = detalle.iloc[inicio - 1:fin].copy()
     if not total.empty:
         filtrado = pd.concat([filtrado, total], ignore_index=True)
@@ -118,8 +211,29 @@ def _render_comparativo_anual(engine, charts):
         "📈 Aumento" if diferencia > 0 else ("📉 Baja" if diferencia < 0 else "➡️ Igual"),
     )
 
+    tendencia = "aumenta" if diferencia > 0 else ("disminuye" if diferencia < 0 else "se mantiene")
+    _render_section_heading(
+        3,
+        "Lectura ejecutiva",
+        "Apertura anual",
+        "Las métricas abren la lectura y luego la síntesis fija el mensaje antes de pasar a la evidencia analítica.",
+    )
+    _render_sequenced_panel(
+        3,
+        "Síntesis anual",
+        f"{anio_actual} frente a {anio_anterior}",
+        f"El volumen total {tendencia} en {abs(diferencia):,} hechos, equivalente a {abs(pct_var):.1f}% respecto del año base. Use las pestañas para ver si el cambio se concentra por periodo, delito o contexto.",
+    )
+
     st.divider()
 
+    _open_scene_stage(
+        4,
+        "Escena analítica",
+        "Exploración anual detallada",
+        "La síntesis ya dejó la lectura central. Desde aquí aparecen la tendencia temporal, la composición por delito y la tabla de contraste.",
+        stage_class="analysis-stage",
+    )
     tab_temporal, tab_delitos, tab_tabla = st.tabs([
         "📅 Comparativo Temporal",
         "📋 Comparativo por Delito",
@@ -172,7 +286,7 @@ def _render_comparativo_anual(engine, charts):
             _tabla_comparativa(df_comp_del, "categoria", str(anio_anterior), str(anio_actual))
 
     with tab_tabla:
-        st.markdown("### Resumen Comparativo Completo")
+        st.markdown("### Resumen consolidado")
 
         dimension = st.selectbox("Dimensión a comparar", [
             "DELITO", "DIA_HECHO", "FRAN_HORAR", "LUGR_HECHO",
@@ -181,8 +295,17 @@ def _render_comparativo_anual(engine, charts):
         df_comp = engine.comparativo_periodos(anio_actual, anio_anterior, dimension)
         _tabla_comparativa(df_comp, "categoria", str(anio_anterior), str(anio_actual))
 
+    _close_scene_stage()
+
     st.divider()
-    st.markdown("### Exportar resultados")
+    _open_scene_stage(
+        6,
+        "Cierre documental",
+        "Exportaciones anuales",
+        "Cierre con los archivos listos para circular, archivar o respaldar la lectura comparativa.",
+        stage_class="export-stage",
+    )
+    st.markdown("### Descarga documental")
     df_export_temporal = engine.comparativo_temporal_anual(anio_actual, anio_anterior, granularidad)
     csv = df_export_temporal.to_csv(index=False).encode("utf-8")
     xlsx = _to_excel_bytes({
@@ -205,6 +328,7 @@ def _render_comparativo_anual(engine, charts):
             f"comparativo_{granularidad}_{anio_anterior}_vs_{anio_actual}.xlsx",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
+    _close_scene_stage()
 
 
 def _render_comparativo_rangos(df_filtered, engine, charts):
@@ -218,12 +342,12 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
     fecha_max = fechas.max()
     desde_a_default, hasta_a_default, desde_b_default, hasta_b_default = _rangos_por_defecto(fecha_min, fecha_max)
 
-    st.markdown("### Comparativo por Rangos de Fechas")
-    st.caption("Periodo A se toma como base. Periodo B se compara contra A. La comparación temporal se alinea por posición relativa dentro de cada rango.")
+    st.markdown("### Comparativo por rangos de fechas")
+    st.caption("El periodo A funciona como base. El periodo B se compara contra A y la evolución temporal se alinea por posición relativa dentro de cada tramo.")
 
     col_a, col_b = st.columns(2)
     with col_a:
-        st.markdown("#### Periodo A (base)")
+        st.markdown("#### Periodo A · base de contraste")
         desde_a = st.date_input(
             "Desde A",
             value=desde_a_default,
@@ -240,7 +364,7 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
         )
 
     with col_b:
-        st.markdown("#### Periodo B (comparación)")
+        st.markdown("#### Periodo B · tramo comparado")
         desde_b = st.date_input(
             "Desde B",
             value=desde_b_default,
@@ -298,8 +422,30 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
         delta=f"{dias_a}d vs {dias_b}d",
     )
 
+    tendencia = "sube" if diferencia > 0 else ("baja" if diferencia < 0 else "permanece estable")
+    _render_section_heading(
+        4,
+        "Lectura ejecutiva",
+        "Apertura por rangos",
+        "Se presentan primero los cortes temporales y luego la lectura resumida para ordenar la comparación operativa.",
+    )
+    _render_sequenced_panel(
+        4,
+        "Síntesis por rango",
+        f"{label_b} frente a {label_a}",
+        f"El segundo periodo {tendencia} en {abs(diferencia):,} hechos, con una variación de {abs(pct_var):.1f}%. La lectura temporal se alinea por posición relativa para que semanas o días equivalentes queden enfrentados.",
+        tone="accent",
+    )
+
     st.divider()
 
+    _open_scene_stage(
+        5,
+        "Escena analítica",
+        "Exploración táctica por rangos",
+        "Después de la síntesis aparecen la evolución, los delitos, las comisarías y el detalle consolidado.",
+        stage_class="analysis-stage",
+    )
     tab_evolucion, tab_delitos, tab_comisarias, tab_tabla = st.tabs([
         "📅 Comparativo Temporal",
         "📋 Comparativo por Delito",
@@ -311,7 +457,7 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
         st.markdown(f"### Comparativo por {granularidad_label}: {label_a} vs {label_b}")
         mostrar_texto = granularidad in {"semestres", "cuatrimestres", "trimestres", "bimestres", "meses"}
         if granularidad in {"semanas", "dias"}:
-            st.caption("El subconjunto visible solo afecta la vista actual. Las exportaciones incluyen la serie completa.")
+            st.caption("El subconjunto visible afecta solo esta vista. La exportación conserva la serie completa.")
         fig = charts.lineas_comparativo(
             df_comp_temporal_view,
             f"Comparativo por {granularidad_label} — {label_a} vs {label_b}",
@@ -344,7 +490,7 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
 
     with tab_comisarias:
         st.markdown(f"### Comparativo por Comisaría: {label_a} vs {label_b}")
-        st.caption("La tabla compara la misma dependencia entre ambos periodos, mostrando 0 cuando una comisaría no registra hechos en uno de los rangos.")
+        st.caption("La tabla enfrenta la misma dependencia en ambos periodos y muestra 0 cuando una comisaría no registra hechos en uno de los tramos.")
         top_n_comisarias = st.slider(
             "Cantidad de comisarías a graficar",
             min_value=5,
@@ -370,7 +516,7 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
         _tabla_comparativa(df_comp_com, "categoria_label", label_a, label_b)
 
     with tab_tabla:
-        st.markdown("### Resumen Comparativo Completo")
+        st.markdown("### Resumen consolidado")
         dimension = st.selectbox(
             "Dimensión a comparar",
             ["DELITO", "DIA_HECHO", "FRAN_HORAR", "LUGR_HECHO"],
@@ -379,8 +525,29 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
         df_comp = engine.comparativo_periodos_rango(desde_b, hasta_b, desde_a, hasta_a, dimension)
         _tabla_comparativa(df_comp, "categoria", label_a, label_b)
 
+    _close_scene_stage()
+
     st.divider()
-    st.markdown("### Exportar resultados")
+    _render_section_heading(
+        6,
+        "Salida operativa",
+        "Cierre documental",
+        "La exportación queda al final para cerrar el recorrido con evidencia descargable.",
+    )
+    _render_sequenced_panel(
+        6,
+        "Exportación",
+        "Descarga de evidencias comparativas",
+        "Las descargas conservan la serie completa, incluso cuando la visual actual muestra solo un subconjunto de semanas o días.",
+    )
+    _open_scene_stage(
+        7,
+        "Archivos finales",
+        "Paquete exportable por rangos",
+        "Este bloque reúne las salidas operativas para circular resultados o respaldar la presentación.",
+        stage_class="export-stage",
+    )
+    st.markdown("### Descarga documental")
     slug_a = _slug_periodo(desde_a, hasta_a)
     slug_b = _slug_periodo(desde_b, hasta_b)
     excel_temporal = _to_excel_bytes({"Comparativo temporal": df_comp_temporal})
@@ -431,6 +598,7 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
             f"comparativo_comisarias_{slug_a}_vs_{slug_b}.xlsx",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
+    _close_scene_stage()
 
 
 def _tabla_comparativa(df, col_label, label_anterior, label_actual):

@@ -195,6 +195,57 @@ CHART_PALETTE = [
 ]
 
 # ============================================================
+# SISTEMA VISUAL BASE - FASE 1
+# ============================================================
+TYPOGRAPHY = {
+    "ui": "'IBM Plex Sans', 'Segoe UI', sans-serif",
+    "editorial": "'Source Serif 4', Georgia, serif",
+}
+
+VISUAL_THEMES = {
+    "oscuro": {
+        "label": "Oscuro Ejecutivo",
+        "page_bg": "#09111f",
+        "page_gradient": "radial-gradient(circle at top left, rgba(28, 71, 128, 0.32), transparent 34%), linear-gradient(180deg, #09111f 0%, #0d1728 100%)",
+        "surface": "rgba(16, 27, 46, 0.88)",
+        "surface_alt": "rgba(21, 36, 60, 0.92)",
+        "surface_sidebar": "linear-gradient(180deg, #1b3b67 0%, #132d4f 100%)",
+        "border": "rgba(124, 156, 203, 0.18)",
+        "text": "#eef4ff",
+        "text_muted": "#b4c3df",
+        "heading": "#f5f8ff",
+        "accent": "#d62839",
+        "accent_soft": "rgba(214, 40, 57, 0.14)",
+        "primary": "#4f8cff",
+        "primary_soft": "rgba(79, 140, 255, 0.16)",
+        "success": "#2fbf71",
+        "warning": "#e7b84b",
+        "metric_bg": "linear-gradient(180deg, rgba(18, 31, 52, 0.98) 0%, rgba(14, 24, 41, 0.98) 100%)",
+        "shadow": "0 18px 42px rgba(0, 0, 0, 0.28)",
+    },
+    "claro": {
+        "label": "Claro Institucional",
+        "page_bg": "#f2f5fa",
+        "page_gradient": "radial-gradient(circle at top left, rgba(36, 79, 144, 0.12), transparent 30%), linear-gradient(180deg, #f7f9fc 0%, #eef3f9 100%)",
+        "surface": "rgba(255, 255, 255, 0.92)",
+        "surface_alt": "rgba(247, 250, 255, 0.97)",
+        "surface_sidebar": "linear-gradient(180deg, #ebf1f8 0%, #dfe8f4 100%)",
+        "border": "rgba(24, 51, 92, 0.12)",
+        "text": "#15233b",
+        "text_muted": "#5d708d",
+        "heading": "#11213c",
+        "accent": "#b81f31",
+        "accent_soft": "rgba(184, 31, 49, 0.1)",
+        "primary": "#245bba",
+        "primary_soft": "rgba(36, 91, 186, 0.12)",
+        "success": "#1f9d63",
+        "warning": "#c58b23",
+        "metric_bg": "linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(244, 247, 252, 0.98) 100%)",
+        "shadow": "0 12px 28px rgba(24, 44, 76, 0.12)",
+    },
+}
+
+# ============================================================
 # COMISARÍAS POR UNIDAD REGIONAL (nombres exactos para filtros)
 # ============================================================
 COMISARIAS_POR_REGION: dict[str, list[str]] = {

@@ -6,20 +6,49 @@ import streamlit as st
 from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar, mostrar_metricas_header
 from app.src.charts.generator import ChartGenerator
 from app.config.settings import UNIDADES_REGIONALES
+from app.src.ui.editorial import close_stage, open_stage, render_hero, render_panel, render_section_heading
 
 
 def render():
-    st.title("🗺️ Análisis Geográfico")
-    st.markdown("Distribución de delitos por jurisdicción y unidad regional")
-
     df = cargar_datos()
     df_filtered = render_filtros_sidebar(df)
     engine = get_engine(df_filtered)
     charts = ChartGenerator()
 
+    render_hero(
+        "Territorio y despliegue",
+        "Análisis geográfico",
+        "Visualiza cómo se reparte la presión delictual por unidad regional y jurisdicción para una lectura territorial clara.",
+        chips=["Unidades regionales", "Ranking de jurisdicciones", "Exportación territorial"],
+        seq=1,
+    )
+
     mostrar_metricas_header(engine)
     st.divider()
 
+    df_ur_preview = engine.delitos_por_unidad_regional()
+    ur_top = df_ur_preview.iloc[0]["categoria_label"] if len(df_ur_preview) else "Sin dato"
+    render_section_heading(
+        2,
+        "Lectura principal",
+        "Territorio dominante",
+        "La apertura identifica qué unidad regional concentra más hechos antes de pasar al detalle por pestañas.",
+    )
+    render_panel(
+        2,
+        "Síntesis territorial",
+        "Unidad regional líder",
+        f"La mayor concentración observada se ubica en {ur_top} dentro de la selección filtrada.",
+        tone="accent",
+    )
+
+    open_stage(
+        3,
+        "Escena analítica",
+        "Distribución espacial",
+        "Primero se contrasta el peso por unidad regional y después se baja al ranking de jurisdicciones.",
+        stage_class="analysis-stage",
+    )
     tab_ur, tab_juris = st.tabs([
         "🏛️ Por Unidad Regional",
         "📍 Por Jurisdicción",
@@ -27,7 +56,7 @@ def render():
 
     # ---- Unidad Regional ----
     with tab_ur:
-        st.markdown("### Delitos por Unidad Regional")
+        st.markdown("### Distribución por unidad regional")
         df_ur = engine.delitos_por_unidad_regional()
 
         if len(df_ur) == 0:
@@ -46,7 +75,7 @@ def render():
                 st.plotly_chart(fig, use_container_width=True)
 
             st.divider()
-            st.markdown("#### Tabla detallada")
+            st.markdown("#### Detalle ejecutivo")
             display = df_ur[["categoria", "categoria_label", "cantidad", "porcentaje"]].copy()
             display.columns = ["Código", "Unidad Regional", "Cantidad", "%"]
             display["Cantidad"] = display["Cantidad"].astype(int)
@@ -55,7 +84,7 @@ def render():
 
     # ---- Jurisdicción ----
     with tab_juris:
-        st.markdown("### Ranking de Jurisdicciones")
+        st.markdown("### Ranking de jurisdicciones")
         top_n = st.slider("Cantidad de jurisdicciones a mostrar", 10, 50, 20, key="top_juris")
         df_juris = engine.delitos_por_jurisdiccion(top_n=top_n)
 
@@ -72,7 +101,7 @@ def render():
             st.divider()
 
             # Tabla de jurisdicciones con filtro por UR
-            st.markdown("#### Detalle por Jurisdicción")
+            st.markdown("#### Detalle por jurisdicción")
             ur_filter = st.selectbox(
                 "Filtrar por Unidad Regional",
                 ["Todas"] + list(UNIDADES_REGIONALES.keys()),
@@ -92,9 +121,24 @@ def render():
             st.dataframe(display, hide_index=True, use_container_width=True,
                           height=min(len(display) * 35 + 50, 600))
 
+    close_stage()
+
     # ---- Exportar ----
     st.divider()
-    st.markdown("### 📥 Exportar")
+    render_section_heading(
+        4,
+        "Cierre documental",
+        "Exportación geográfica",
+        "Cierra el recorrido con archivos directos para unidades regionales y jurisdicciones.",
+    )
+    open_stage(
+        4,
+        "Archivos finales",
+        "Descargas territoriales",
+        "Los archivos se generan desde la misma base filtrada para conservar coherencia con la vista.",
+        stage_class="export-stage",
+    )
+    st.markdown("### Descarga documental")
     col_e1, col_e2 = st.columns(2)
     with col_e1:
         csv = engine.delitos_por_unidad_regional().to_csv(index=False).encode("utf-8")
@@ -104,3 +148,4 @@ def render():
         csv = engine.delitos_por_jurisdiccion(top_n=200).to_csv(index=False).encode("utf-8")
         st.download_button("⬇️ Jurisdicciones (CSV)", csv,
                            "delitos_por_jurisdiccion.csv", "text/csv")
+    close_stage()

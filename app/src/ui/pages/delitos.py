@@ -5,17 +5,22 @@ Informe 6.1 — Tabla y gráficos de delitos clasificados por tipo.
 import streamlit as st
 from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar, mostrar_metricas_header
 from app.src.charts.generator import ChartGenerator
-from app.config.settings import DELITO_CATEGORIAS
+from app.src.ui.editorial import close_stage, open_stage, render_hero, render_panel, render_section_heading
 
 
 def render():
-    st.title("📋 Delitos por Modalidad")
-    st.markdown("Análisis de hechos delictivos clasificados por tipo de delito")
-
     df = cargar_datos()
     df_filtered = render_filtros_sidebar(df)
     engine = get_engine(df_filtered)
     charts = ChartGenerator()
+
+    render_hero(
+        "Modalidades delictivas",
+        "Delitos por modalidad",
+        "Página centrada en composición delictual, detalle por modus operandi y contraste mensual para lectura ejecutiva.",
+        chips=["Tabla y gráficos coordinados", "Mapa de calor mensual", "Exportación inmediata"],
+        seq=1,
+    )
 
     mostrar_metricas_header(engine)
     st.divider()
@@ -27,17 +32,39 @@ def render():
         st.warning("No hay datos para los filtros seleccionados.")
         return
 
+    modalidad_top = df_modal.iloc[0]
+    render_section_heading(
+        2,
+        "Lectura principal",
+        "Composición por modalidad",
+        "Primero se fija la modalidad dominante y luego se abre la combinación de tabla y visuales.",
+    )
+    render_panel(
+        2,
+        "Síntesis",
+        str(modalidad_top.get("categoria_label", "Modalidad líder")),
+        f"La modalidad con mayor incidencia aporta {int(modalidad_top['cantidad']):,} hechos, equivalente a {modalidad_top['porcentaje']:.1f}% del universo filtrado.",
+        tone="accent",
+    )
+
+    open_stage(
+        3,
+        "Escena analítica",
+        "Tabla y distribución",
+        "La tabla aporta detalle por modalidad y modus operandi, mientras los gráficos resuelven jerarquía y proporción.",
+        stage_class="analysis-stage",
+    )
     col_tabla, col_grafico = st.columns([1, 1.5])
 
     with col_tabla:
-        st.markdown("### Tabla de Delitos por Modalidad")
+        st.markdown("### Detalle por modalidad")
 
         # Crear tabla HTML estilizada
         html = _generar_tabla_html(df_modal)
         st.markdown(html, unsafe_allow_html=True)
 
     with col_grafico:
-        st.markdown("### Distribución de Delitos")
+        st.markdown("### Distribución visual")
         tab_barras, tab_dona = st.tabs(["📊 Barras", "🍩 Dona"])
 
         with tab_barras:
@@ -51,10 +78,24 @@ def render():
             fig = charts.dona(df_modal, "Proporción por Tipo de Delito")
             st.plotly_chart(fig, use_container_width=True)
 
+    close_stage()
+
     st.divider()
 
     # ---- Heatmap: Delito x Mes ----
-    st.markdown("### Mapa de Calor: Delitos por Modalidad y Mes")
+    render_section_heading(
+        4,
+        "Profundización",
+        "Intensidad mensual por modalidad",
+        "Este plano muestra si la presión delictual cambia a lo largo del año y ayuda a detectar concentraciones persistentes.",
+    )
+    open_stage(
+        4,
+        "Mapa de calor",
+        "Cruce modalidad por mes",
+        "La matriz resume intensidad relativa y permite ubicar periodos con mayor densidad para cada categoría.",
+        stage_class="analysis-stage",
+    )
 
     if "MES_DENU" in df_filtered.columns and "DELITO" in df_filtered.columns:
         from app.config.settings import MESES, MESES_LABELS
@@ -77,9 +118,24 @@ def render():
         else:
             st.info("Sin datos cruzados disponibles.")
 
+    close_stage()
+
     # ---- Exportar ----
     st.divider()
-    st.markdown("### 📥 Exportar Datos")
+    render_section_heading(
+        5,
+        "Cierre documental",
+        "Exportación de modalidades",
+        "Cierre con el archivo plano listo para circular hallazgos o reutilizar la tabla en otros informes.",
+    )
+    open_stage(
+        5,
+        "Archivo final",
+        "Descarga CSV",
+        "Incluye el detalle de modalidades y porcentajes sobre la muestra filtrada vigente.",
+        stage_class="export-stage",
+    )
+    st.markdown("### Descarga documental")
     csv = df_modal.to_csv(index=False).encode("utf-8")
     st.download_button(
         "⬇️ Descargar como CSV",
@@ -87,6 +143,7 @@ def render():
         file_name="delitos_por_modalidad.csv",
         mime="text/csv",
     )
+    close_stage()
 
 
 def _generar_tabla_html(df) -> str:
