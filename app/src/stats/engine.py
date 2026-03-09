@@ -120,6 +120,58 @@ def _pct_variacion(base: int, actual: int) -> float:
     return 100.0 if actual > 0 else 0.0
 
 
+def _valor_informado(valor) -> bool:
+    """Determina si un valor puede usarse como categoría visible."""
+    if pd.isna(valor):
+        return False
+    if isinstance(valor, str):
+        return valor.strip() != ""
+    return True
+
+
+def _mask_campos_informados(df: pd.DataFrame, campos: list[str]) -> pd.Series:
+    """Máscara booleana para filas con todos los campos requeridos informados."""
+    if df.empty:
+        return pd.Series(dtype=bool, index=df.index)
+
+    mask = pd.Series(True, index=df.index)
+    for campo in campos:
+        if campo not in df.columns:
+            return pd.Series(False, index=df.index)
+        mask &= df[campo].apply(_valor_informado)
+    return mask
+
+
+def _serie_valores_informados(df: pd.DataFrame, campo: str) -> pd.Series:
+    """Devuelve solo los valores informados de un campo, excluyendo nulos y blancos."""
+    if campo not in df.columns:
+        return pd.Series(dtype="object")
+    mask = _mask_campos_informados(df, [campo])
+    return df.loc[mask, campo]
+
+
+def _resumen_cobertura_df(df: pd.DataFrame, campos: list[str]) -> dict:
+    """Resume cuántos registros quedan disponibles para una dimensión comparativa."""
+    total = int(len(df))
+    if total == 0:
+        return {
+            "totales": 0,
+            "validos": 0,
+            "excluidos": 0,
+            "pct_cobertura": 0.0,
+        }
+
+    mask = _mask_campos_informados(df, campos)
+    validos = int(mask.sum())
+    excluidos = total - validos
+    return {
+        "totales": total,
+        "validos": validos,
+        "excluidos": excluidos,
+        "pct_cobertura": round((validos / total) * 100, 2),
+    }
+
+
 def _label_jurisdiccion(valor: str) -> str:
     """Genera un nombre corto y legible para una jurisdicción/comisaría."""
     if pd.isna(valor):
@@ -176,6 +228,27 @@ def _label_delito(valor: str) -> str:
     return texto.title()
 
 
+def _label_categoria_comparativo(campo: str, valor) -> str:
+    """Centraliza labels visibles para tablas comparativas por dimensión."""
+    if pd.isna(valor):
+        return "Sin dato"
+
+    if campo == "DELITO":
+        return _label_delito(valor)
+    if campo == "DIA_HECHO":
+        return DIAS_LABELS.get(str(valor), str(valor).replace("_", " ").title())
+    if campo == "FRAN_HORAR":
+        return FRANJAS_LABELS.get(str(valor), str(valor).replace("_", " ").title())
+    if campo == "JURIS_HECH":
+        return _label_jurisdiccion(str(valor))
+    if campo == "_unidad_regional":
+        return UNIDADES_REGIONALES.get(str(valor), str(valor))
+
+    texto = str(valor).replace("#", "").replace("_", " ")
+    texto = re.sub(r"\s+", " ", texto).strip()
+    return texto.title()
+
+
 def _normalizar_modus_operandi(valor: str) -> str:
     """Normaliza MODUS_OPER para construir modalidades operativas legibles."""
     if pd.isna(valor):
@@ -228,6 +301,10 @@ def _label_periodo_anual(granularidad: str, bucket) -> str:
         return MESES_LABELS[MESES[int(bucket) - 1]].upper()
     if granularidad == "semanas":
         return f"SEM. {int(bucket):02d}"
+    if granularidad == "bisemanas":
+        return f"BISEM. {int(bucket):02d}"
+    if granularidad == "trisemanas":
+        return f"TRISEM. {int(bucket):02d}"
     if granularidad == "dias":
         return str(bucket)
     return str(bucket)
@@ -247,9 +324,31 @@ def _label_periodo_rango(granularidad: str, posicion: int) -> str:
         return f"MES {posicion:02d}"
     if granularidad == "semanas":
         return f"SEM. {posicion:02d}"
+    if granularidad == "bisemanas":
+        return f"BISEM. {posicion:02d}"
+    if granularidad == "trisemanas":
+        return f"TRISEM. {posicion:02d}"
     if granularidad == "dias":
         return f"DIA {posicion:02d}"
     return f"TRAMO {posicion:02d}"
+
+
+def _tabla_serie_temporal(serie: pd.DataFrame) -> pd.DataFrame:
+    """Convierte una serie temporal agrupada en una tabla homogénea para la UI."""
+    if serie.empty:
+        return pd.DataFrame(columns=["categoria", "categoria_label", "cantidad", "porcentaje", "total"])
+
+    total = int(serie["cantidad"].sum())
+    result = pd.DataFrame({
+        "categoria": serie["bucket"],
+        "categoria_label": serie["bucket_label"],
+        "cantidad": serie["cantidad"].astype(int),
+    })
+    result["porcentaje"] = (
+        (result["cantidad"] / total) * 100
+    ).round(2) if total > 0 else 0.0
+    result["total"] = total
+    return result
 
 
 def _serie_temporal_por_granularidad(df: pd.DataFrame, granularidad: str) -> pd.DataFrame:
@@ -282,6 +381,14 @@ def _serie_temporal_por_granularidad(df: pd.DataFrame, granularidad: str) -> pd.
         semanas = fechas.dt.isocalendar().week.astype(int)
         df_valid["bucket"] = semanas
         df_valid["bucket_label"] = semanas.map(lambda x: _label_periodo_anual(granularidad, x))
+    elif granularidad == "bisemanas":
+        bisemanas = ((fechas.dt.isocalendar().week.astype(int) - 1) // 2) + 1
+        df_valid["bucket"] = bisemanas
+        df_valid["bucket_label"] = bisemanas.map(lambda x: _label_periodo_anual(granularidad, x))
+    elif granularidad == "trisemanas":
+        trisemanas = ((fechas.dt.isocalendar().week.astype(int) - 1) // 3) + 1
+        df_valid["bucket"] = trisemanas
+        df_valid["bucket_label"] = trisemanas.map(lambda x: _label_periodo_anual(granularidad, x))
     elif granularidad == "dias":
         df_valid["bucket"] = fechas.dt.strftime("%m-%d")
         df_valid["bucket_label"] = fechas.dt.strftime("%d/%m")
@@ -332,6 +439,14 @@ def _serie_temporal_rango_por_granularidad(df: pd.DataFrame, granularidad: str) 
         df_valid["bucket_base"] = fechas.dt.to_period("M").dt.to_timestamp()
     elif granularidad == "semanas":
         df_valid["bucket_base"] = (fechas - pd.to_timedelta(fechas.dt.weekday, unit="D")).dt.normalize()
+    elif granularidad == "bisemanas":
+        semana_inicio = (fechas - pd.to_timedelta(fechas.dt.weekday, unit="D")).dt.normalize()
+        desplazamiento = (fechas.dt.isocalendar().week.astype(int) - 1) % 2
+        df_valid["bucket_base"] = semana_inicio - pd.to_timedelta(desplazamiento * 7, unit="D")
+    elif granularidad == "trisemanas":
+        semana_inicio = (fechas - pd.to_timedelta(fechas.dt.weekday, unit="D")).dt.normalize()
+        desplazamiento = (fechas.dt.isocalendar().week.astype(int) - 1) % 3
+        df_valid["bucket_base"] = semana_inicio - pd.to_timedelta(desplazamiento * 7, unit="D")
     elif granularidad == "dias":
         df_valid["bucket_base"] = fechas.dt.normalize()
     else:
@@ -553,6 +668,14 @@ class StatsEngine:
             labels=MESES_LABELS,
         )
 
+    def delitos_por_granularidad_temporal(self, granularidad: str = "meses") -> pd.DataFrame:
+        """Serie temporal agrupada para visualizaciones temporales anuales."""
+        return _tabla_serie_temporal(_serie_temporal_por_granularidad(self.df, granularidad))
+
+    def delitos_por_semana(self, granularidad: str = "semanas") -> pd.DataFrame:
+        """Serie temporal agrupada por semanas del año y derivados."""
+        return self.delitos_por_granularidad_temporal(granularidad)
+
     def matriz_modalidad_franja(self, top_n_delitos: int = 8) -> pd.DataFrame:
         """Matriz de intensidad por modalidad delictiva y franja horaria."""
         if "DELITO" not in self.df.columns or "FRAN_HORAR" not in self.df.columns:
@@ -684,6 +807,19 @@ class StatsEngine:
 
         return self._comparativo_entre_dataframes(df_act, df_ant, campo)
 
+    def cobertura_comparativo_periodos(
+        self,
+        anio_actual: int,
+        anio_anterior: int,
+        campo: str,
+        campos_requeridos: Optional[list[str]] = None,
+    ) -> dict:
+        """Devuelve la cobertura real de una dimensión comparativa entre dos años."""
+        df_ant = self.df[self.df["_anio"] == anio_anterior]
+        df_act = self.df[self.df["_anio"] == anio_actual]
+        campos = campos_requeridos or [campo]
+        return self._resumen_cobertura_dimension(df_act, df_ant, campo, campos)
+
     def comparativo_periodos_rango(
         self,
         fecha_actual_desde: date,
@@ -697,6 +833,21 @@ class StatsEngine:
         df_act = self._filtrar_df_por_rango_fecha(fecha_actual_desde, fecha_actual_hasta)
 
         return self._comparativo_entre_dataframes(df_act, df_ant, campo)
+
+    def cobertura_comparativo_periodos_rango(
+        self,
+        fecha_actual_desde: date,
+        fecha_actual_hasta: date,
+        fecha_anterior_desde: date,
+        fecha_anterior_hasta: date,
+        campo: str,
+        campos_requeridos: Optional[list[str]] = None,
+    ) -> dict:
+        """Devuelve la cobertura real de una dimensión comparativa entre dos rangos."""
+        df_ant = self._filtrar_df_por_rango_fecha(fecha_anterior_desde, fecha_anterior_hasta)
+        df_act = self._filtrar_df_por_rango_fecha(fecha_actual_desde, fecha_actual_hasta)
+        campos = campos_requeridos or [campo]
+        return self._resumen_cobertura_dimension(df_act, df_ant, campo, campos)
 
     def comparativo_modalidades_operativas(
         self,
@@ -790,6 +941,28 @@ class StatsEngine:
             "JURIS_HECH",
         )
 
+        if result.empty:
+            return result
+
+        detalle = result[result["categoria"] != "TOTAL"].copy()
+        detalle["categoria_label"] = detalle["categoria"].apply(_label_jurisdiccion)
+        detalle = detalle.sort_values(
+            by=["cantidad_actual", "cantidad_anterior", "categoria_label"],
+            ascending=[False, False, True],
+            ignore_index=True,
+        )
+
+        total = result[result["categoria"] == "TOTAL"].copy()
+        total["categoria_label"] = "TOTAL"
+        return pd.concat([detalle, total], ignore_index=True)
+
+    def comparativo_comisarias_anual(
+        self,
+        anio_actual: int,
+        anio_anterior: int,
+    ) -> pd.DataFrame:
+        """Compara los totales de hechos por comisaría entre dos años."""
+        result = self.comparativo_periodos(anio_actual, anio_anterior, "JURIS_HECH")
         if result.empty:
             return result
 
@@ -1023,8 +1196,8 @@ class StatsEngine:
         campo: str,
     ) -> pd.DataFrame:
         """Construye una tabla comparativa estándar entre dos subconjuntos."""
-        conteo_ant = df_anterior[campo].dropna().value_counts()
-        conteo_act = df_actual[campo].dropna().value_counts()
+        conteo_ant = _serie_valores_informados(df_anterior, campo).value_counts()
+        conteo_act = _serie_valores_informados(df_actual, campo).value_counts()
 
         categorias = sorted(set(conteo_ant.index) | set(conteo_act.index))
 
@@ -1036,9 +1209,7 @@ class StatsEngine:
             lambda row: _pct_variacion(int(row["cantidad_anterior"]), int(row["cantidad_actual"])),
             axis=1,
         )
-
-        if campo == "DELITO":
-            result["categoria_label"] = result["categoria"].apply(_label_delito)
+        result["categoria_label"] = result["categoria"].apply(lambda valor: _label_categoria_comparativo(campo, valor))
 
         total_ant = int(result["cantidad_anterior"].sum())
         total_act = int(result["cantidad_actual"].sum())
@@ -1048,11 +1219,28 @@ class StatsEngine:
             "cantidad_actual": total_act,
             "diferencia": total_act - total_ant,
             "pct_variacion": _pct_variacion(total_ant, total_act),
+            "categoria_label": "TOTAL",
         }
-        if campo == "DELITO":
-            total_row["categoria_label"] = "TOTAL"
         result = pd.concat([result, pd.DataFrame([total_row])], ignore_index=True)
         return result
+
+    def _resumen_cobertura_dimension(
+        self,
+        df_actual: pd.DataFrame,
+        df_anterior: pd.DataFrame,
+        campo: str,
+        campos_requeridos: list[str],
+    ) -> dict:
+        """Calcula la cobertura de filas utilizables para una dimensión comparativa."""
+        anterior = _resumen_cobertura_df(df_anterior, campos_requeridos)
+        actual = _resumen_cobertura_df(df_actual, campos_requeridos)
+        return {
+            "dimension": campo,
+            "campos_requeridos": campos_requeridos,
+            "anterior": anterior,
+            "actual": actual,
+            "hay_perdida": anterior["excluidos"] > 0 or actual["excluidos"] > 0,
+        }
 
     def _comparativo_modalidades_operativas_df(
         self,
@@ -1064,7 +1252,7 @@ class StatsEngine:
             if "DELITO" not in df_base.columns:
                 return pd.Series(dtype="int64")
 
-            df_local = df_base.dropna(subset=["DELITO"]).copy()
+            df_local = df_base.loc[_mask_campos_informados(df_base, ["DELITO"])].copy()
             if "MODUS_OPER" in df_local.columns:
                 df_local["modus_clean"] = df_local["MODUS_OPER"].apply(_normalizar_modus_operandi)
             else:

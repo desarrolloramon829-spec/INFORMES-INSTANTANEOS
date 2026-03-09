@@ -42,6 +42,25 @@ def _trim_ticktext(values: list, max_chars: int = 22) -> list[str]:
     return labels
 
 
+def _wrap_ticktext(values: list, width: int = 16, max_lines: int = 2) -> list[str]:
+    labels = []
+    for value in values:
+        text = str(value).strip()
+        if not text:
+            labels.append("")
+            continue
+
+        parts = textwrap.wrap(text, width=width, break_long_words=False)
+        if len(parts) > max_lines:
+            visible = parts[:max_lines]
+            last = visible[-1]
+            visible[-1] = last if len(last) <= width - 1 else last[:width - 1]
+            visible[-1] = f"{visible[-1]}…"
+            parts = visible
+        labels.append("<br>".join(parts))
+    return labels
+
+
 def _wrap_title(text: str, width: int = 28) -> str:
     raw = str(text or "").strip()
     if len(raw) <= width:
@@ -237,11 +256,20 @@ class ChartGenerator:
         """Gráfico de barras verticales con resaltado del valor máximo."""
         theme = _get_active_theme()
         df_plot = df.copy()
+        categories = df_plot[col_cat].astype(str).tolist()
         palette = _palette_by_chart(theme, "vertical")
         base_color = _resolve_default_color(color, palette[0])
         show_text = _should_show_text(len(df_plot), 12)
+        max_label_length = max((len(label) for label in categories), default=0)
+        use_wrapped_ticks = max_label_length > 14
         if height is None:
-            height = _adaptive_height(len(df_plot), base=260, per_item=18, minimum=360, maximum=760)
+            height = _adaptive_height(
+                len(df_plot),
+                base=300 if use_wrapped_ticks else 260,
+                per_item=18,
+                minimum=420 if use_wrapped_ticks else 360,
+                maximum=760,
+            )
 
         colors = [base_color] * len(df_plot)
         if highlight_max and len(df_plot) > 0:
@@ -270,8 +298,20 @@ class ChartGenerator:
         )
 
         _apply_axis_density(fig, df_plot[col_cat].tolist(), axis="x")
+        if use_wrapped_ticks:
+            fig.update_xaxes(
+                tickmode="array",
+                tickvals=categories,
+                ticktext=_wrap_ticktext(categories, width=16, max_lines=2),
+                tickangle=-18,
+                tickfont=dict(size=11, color=theme["text"]),
+                automargin=True,
+            )
 
-        return _apply_base_layout(fig, titulo, height)
+        fig = _apply_base_layout(fig, titulo, height)
+        if use_wrapped_ticks:
+            fig.update_layout(margin=dict(l=60, r=30, t=68, b=110))
+        return fig
 
     # ---- Gráfico de torta / dona ----
 
@@ -411,7 +451,9 @@ class ChartGenerator:
         point_count = len(df_plot)
         show_text = mostrar_texto and _should_show_text(point_count, 12)
         if point_count > 18:
-            height = max(height, 520)
+            height = max(height, 560)
+        elif point_count > 10:
+            height = max(height, 500)
 
         text_y1 = df_plot[col_y1].apply(lambda x: f"{int(x):,}") if show_text else None
         text_y2 = df_plot[col_y2].apply(lambda x: f"{int(x):,}") if show_text else None
@@ -454,8 +496,11 @@ class ChartGenerator:
         _apply_axis_density(fig, df_plot[col_x].tolist(), axis="x")
         fig.update_yaxes(rangemode="tozero")
         fig.update_xaxes(showspikes=True, spikecolor=theme["border"], spikethickness=1)
-
-        return _apply_base_layout(fig, titulo, height)
+        fig = _apply_base_layout(fig, titulo, height)
+        fig.update_layout(
+            margin=dict(l=60, r=30, t=78, b=110 if point_count > 10 else 70),
+        )
+        return fig
 
     # ---- Barras agrupadas comparativas ----
 
@@ -475,7 +520,8 @@ class ChartGenerator:
         df_plot = df[df[col_cat] != "TOTAL"].copy()
         palette = _palette_by_chart(theme, "comparison")
         show_text = _should_show_text(len(df_plot), 10)
-        height = _adaptive_height(len(df_plot), base=290, per_item=22, minimum=380, maximum=860)
+        item_count = len(df_plot)
+        height = _adaptive_height(item_count, base=320, per_item=24, minimum=420, maximum=980)
 
         fig = go.Figure()
 
@@ -505,8 +551,11 @@ class ChartGenerator:
 
         fig.update_layout(barmode="group")
         _apply_axis_density(fig, df_plot[col_cat].tolist(), axis="x")
-
-        return _apply_base_layout(fig, titulo, height)
+        fig = _apply_base_layout(fig, titulo, height)
+        fig.update_layout(
+            margin=dict(l=60, r=30, t=78, b=120 if item_count > 10 else 80),
+        )
+        return fig
 
     @staticmethod
     def barras_horizontal_comparativo(

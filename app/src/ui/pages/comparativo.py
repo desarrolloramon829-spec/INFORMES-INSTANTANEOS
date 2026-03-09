@@ -137,6 +137,8 @@ def _granularidades_temporales():
         "Bimestres": "bimestres",
         "Meses": "meses",
         "Semanas": "semanas",
+        "Bisemanas": "bisemanas",
+        "Trisemanas": "trisemanas",
         "Días": "dias",
     }
 
@@ -145,10 +147,15 @@ def _filtrar_subserie_temporal(df, granularidad, key_prefix):
     detalle = df[df["periodo_label"] != "TOTAL"].copy()
     total = df[df["periodo_label"] == "TOTAL"].copy()
 
-    if granularidad not in {"semanas", "dias"} or len(detalle) <= 16:
+    if granularidad not in {"semanas", "bisemanas", "trisemanas", "dias"} or len(detalle) <= 16:
         return df
 
-    etiqueta = "semanas" if granularidad == "semanas" else "días"
+    etiqueta = {
+        "semanas": "semanas",
+        "bisemanas": "bisemanas",
+        "trisemanas": "trisemanas",
+        "dias": "días",
+    }.get(granularidad, "periodos")
     inicio, fin = st.slider(
         f"Subconjunto visible de {etiqueta}",
         min_value=1,
@@ -170,6 +177,41 @@ def _to_excel_bytes(sheets: dict[str, pd.DataFrame]) -> bytes:
             dataframe.to_excel(writer, sheet_name=nombre[:31], index=False)
     buffer.seek(0)
     return buffer.getvalue()
+
+
+def _label_dimension_cobertura(campo):
+    labels = {
+        "DELITO": "delito",
+        "DIA_HECHO": "día del hecho",
+        "FRAN_HORAR": "franja horaria",
+        "JURIS_HECH": "comisaría",
+        "LUGR_HECHO": "lugar del hecho",
+        "_unidad_regional": "unidad regional",
+    }
+    return labels.get(campo, str(campo).replace("_", " ").lower())
+
+
+def _render_advertencia_cobertura(cobertura, label_anterior, label_actual, titulo_dimension=None):
+    if not cobertura or not cobertura.get("hay_perdida"):
+        return
+
+    campos = cobertura.get("campos_requeridos") or [cobertura.get("dimension", "dato")]
+    campos_texto = ", ".join(campos)
+    dimension_label = titulo_dimension or _label_dimension_cobertura(cobertura.get("dimension", "dato"))
+    anterior = cobertura["anterior"]
+    actual = cobertura["actual"]
+
+    st.warning(
+        f"Cobertura parcial en {dimension_label}: se excluyen registros sin valor informado en {campos_texto}."
+    )
+    st.caption(
+        f"{label_anterior}: {anterior['validos']:,}/{anterior['totales']:,} registros con dato "
+        f"({anterior['pct_cobertura']:.1f}%). Excluidos: {anterior['excluidos']:,}."
+    )
+    st.caption(
+        f"{label_actual}: {actual['validos']:,}/{actual['totales']:,} registros con dato "
+        f"({actual['pct_cobertura']:.1f}%). Excluidos: {actual['excluidos']:,}."
+    )
 
 
 def _render_comparativo_anual(engine, charts):
@@ -234,12 +276,23 @@ def _render_comparativo_anual(engine, charts):
         "La síntesis ya dejó la lectura central. Desde aquí aparecen la tendencia temporal, la composición por delito y la tabla de contraste.",
         stage_class="analysis-stage",
     )
-    tab_temporal, tab_delitos, tab_modalidades, tab_tabla = st.tabs([
+    tab_temporal, tab_delitos, tab_modalidades, tab_comisarias, tab_tabla = st.tabs([
         "📅 Comparativo Temporal",
         "📋 Comparativo por Delito",
         "🧩 Modalidades Reales",
+        "🏛️ Comparativo por Comisaría",
         "📊 Tabla Detallada",
     ])
+
+    df_comp_com = engine.comparativo_comisarias_anual(anio_actual, anio_anterior)
+    cobertura_delitos = engine.cobertura_comparativo_periodos(anio_actual, anio_anterior, "DELITO")
+    cobertura_modalidades = engine.cobertura_comparativo_periodos(
+        anio_actual,
+        anio_anterior,
+        "DELITO",
+        campos_requeridos=["DELITO"],
+    )
+    cobertura_comisarias = engine.cobertura_comparativo_periodos(anio_actual, anio_anterior, "JURIS_HECH")
 
     with tab_temporal:
         granularidad_label = st.selectbox(
@@ -262,7 +315,7 @@ def _render_comparativo_anual(engine, charts):
                 label_y1=str(anio_anterior),
                 label_y2=str(anio_actual),
                 mostrar_texto=mostrar_texto,
-                height=520 if granularidad in {"semanas", "dias"} else 450,
+                height=520 if granularidad in {"semanas", "bisemanas", "trisemanas", "dias"} else 450,
             )
             st.plotly_chart(fig, use_container_width=True)
 
@@ -271,6 +324,7 @@ def _render_comparativo_anual(engine, charts):
 
     with tab_delitos:
         st.markdown(f"### Comparativo por Tipo de Delito: {anio_anterior} vs {anio_actual}")
+        _render_advertencia_cobertura(cobertura_delitos, str(anio_anterior), str(anio_actual), "delito")
         df_comp_del = engine.comparativo_periodos(anio_actual, anio_anterior, "DELITO")
 
         if len(df_comp_del) > 1:
@@ -294,6 +348,7 @@ def _render_comparativo_anual(engine, charts):
 
     with tab_modalidades:
         st.markdown(f"### Comparativo por Modalidad Operativa: {anio_anterior} vs {anio_actual}")
+        _render_advertencia_cobertura(cobertura_modalidades, str(anio_anterior), str(anio_actual), "modalidad operativa")
         df_comp_modalidades = engine.comparativo_modalidades_operativas(anio_actual, anio_anterior)
         top_modalidades = st.slider(
             "Modalidades operativas a graficar",
@@ -319,6 +374,34 @@ def _render_comparativo_anual(engine, charts):
         st.markdown("#### Tabla comparativa por modalidad operativa")
         _tabla_comparativa(df_comp_modalidades, "categoria_label", str(anio_anterior), str(anio_actual))
 
+    with tab_comisarias:
+        st.markdown(f"### Comparativo por Comisaría: {anio_anterior} vs {anio_actual}")
+        st.caption("La tabla enfrenta la misma dependencia en ambos años y conserva comisarías sin hechos en uno de los periodos con valor 0.")
+        _render_advertencia_cobertura(cobertura_comisarias, str(anio_anterior), str(anio_actual), "comisaría")
+        top_n_comisarias = st.slider(
+            "Cantidad de comisarías a graficar",
+            min_value=5,
+            max_value=40,
+            value=min(15, max(len(df_comp_com[df_comp_com["categoria_label"] != "TOTAL"]), 5)),
+            key="top_comisarias_anual",
+        )
+        df_chart_com = df_comp_com[df_comp_com["categoria_label"] != "TOTAL"].head(top_n_comisarias)
+        if len(df_chart_com) > 0:
+            fig = charts.barras_comparativo(
+                df_chart_com,
+                f"Comisarías con más hechos — {anio_anterior} vs {anio_actual}",
+                col_cat="categoria_label",
+                label_y1=str(anio_anterior),
+                label_y2=str(anio_actual),
+                height=max(520, len(df_chart_com) * 30 + 220),
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No hay datos suficientes para graficar el comparativo por comisaría.")
+
+        st.markdown("#### Tabla comparativa por comisaría")
+        _tabla_comparativa(df_comp_com, "categoria_label", str(anio_anterior), str(anio_actual))
+
     with tab_tabla:
         st.markdown("### Resumen consolidado")
 
@@ -326,6 +409,8 @@ def _render_comparativo_anual(engine, charts):
             "DELITO", "DIA_HECHO", "FRAN_HORAR", "LUGR_HECHO",
         ], key="dimension_anual")
 
+        cobertura_dimension = engine.cobertura_comparativo_periodos(anio_actual, anio_anterior, dimension)
+        _render_advertencia_cobertura(cobertura_dimension, str(anio_anterior), str(anio_actual))
         df_comp = engine.comparativo_periodos(anio_actual, anio_anterior, dimension)
         _tabla_comparativa(
             df_comp,
@@ -350,6 +435,7 @@ def _render_comparativo_anual(engine, charts):
     xlsx = _to_excel_bytes({
         "Comparativo temporal": df_export_temporal,
         "Comparativo delito": df_comp_del,
+        "Comparativo comisarias": df_comp_com,
         "Detalle": df_comp,
     })
     col_export_csv, col_export_xlsx = st.columns(2)
@@ -444,12 +530,21 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
     df_comp_com = engine.comparativo_comisarias_rango(desde_b, hasta_b, desde_a, hasta_a)
     df_comp_temporal = engine.comparativo_temporal_rango(desde_b, hasta_b, desde_a, hasta_a, granularidad)
     df_comp_temporal_view = _filtrar_subserie_temporal(df_comp_temporal, granularidad, "rangos_temporal")
-    total = df_comp_del[df_comp_del["categoria"] == "TOTAL"].iloc[0]
+    cobertura_delitos = engine.cobertura_comparativo_periodos_rango(desde_b, hasta_b, desde_a, hasta_a, "DELITO")
+    cobertura_modalidades = engine.cobertura_comparativo_periodos_rango(
+        desde_b,
+        hasta_b,
+        desde_a,
+        hasta_a,
+        "DELITO",
+        campos_requeridos=["DELITO"],
+    )
+    cobertura_comisarias = engine.cobertura_comparativo_periodos_rango(desde_b, hasta_b, desde_a, hasta_a, "JURIS_HECH")
 
-    total_a = int(total["cantidad_anterior"])
-    total_b = int(total["cantidad_actual"])
-    diferencia = int(total["diferencia"])
-    pct_var = float(total["pct_variacion"])
+    total_a = engine.filtrar(fecha_desde=desde_a, fecha_hasta=hasta_a).total_registros
+    total_b = engine.filtrar(fecha_desde=desde_b, fecha_hasta=hasta_b).total_registros
+    diferencia = int(total_b - total_a)
+    pct_var = round((diferencia / total_a) * 100, 2) if total_a > 0 else (100.0 if total_b > 0 else 0.0)
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Periodo A", f"{total_a:,}", delta=label_a)
@@ -485,18 +580,21 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
         "Después de la síntesis aparecen la evolución, los delitos, las comisarías y el detalle consolidado.",
         stage_class="analysis-stage",
     )
-    tab_evolucion, tab_delitos, tab_modalidades, tab_comisarias, tab_tabla = st.tabs([
+    tab_evolucion, tab_diaria, tab_delitos, tab_modalidades, tab_comisarias, tab_tabla = st.tabs([
         "📅 Comparativo Temporal",
+        "📈 Evolución Diaria",
         "📋 Comparativo por Delito",
         "🧩 Modalidades Reales",
         "🏛️ Comparativo por Comisaría",
         "📊 Tabla Detallada",
     ])
 
+    df_comp_diario = engine.comparativo_diario_rango(desde_b, hasta_b, desde_a, hasta_a)
+
     with tab_evolucion:
         st.markdown(f"### Comparativo por {granularidad_label}: {label_a} vs {label_b}")
         mostrar_texto = granularidad in {"semestres", "cuatrimestres", "trimestres", "bimestres", "meses"}
-        if granularidad in {"semanas", "dias"}:
+        if granularidad in {"semanas", "bisemanas", "trisemanas", "dias"}:
             st.caption("El subconjunto visible afecta solo esta vista. La exportación conserva la serie completa.")
         fig = charts.lineas_comparativo(
             df_comp_temporal_view,
@@ -505,14 +603,33 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
             label_y1="Periodo A",
             label_y2="Periodo B",
             mostrar_texto=mostrar_texto,
-            height=520 if granularidad in {"semanas", "dias"} else 450,
+            height=520 if granularidad in {"semanas", "bisemanas", "trisemanas", "dias"} else 450,
         )
         st.plotly_chart(fig, use_container_width=True)
         st.markdown(f"#### Tabla comparativa por {granularidad_label.lower()}")
         _tabla_comparativa(df_comp_temporal_view, "periodo_label", label_a, label_b)
 
+    with tab_diaria:
+        st.markdown(f"### Evolución diaria alineada: {label_a} vs {label_b}")
+        st.caption("Esta vista alinea día 1 contra día 1, día 2 contra día 2 y así sucesivamente, incluso cuando los periodos tienen distinta duración.")
+        df_comp_diario_view = _filtrar_subserie_temporal(df_comp_diario.rename(columns={"dia_label": "periodo_label"}), "dias", "rangos_diario")
+        fig = charts.lineas_comparativo(
+            df_comp_diario_view,
+            f"Evolución diaria — {label_a} vs {label_b}",
+            col_x="periodo_label",
+            label_y1="Periodo A",
+            label_y2="Periodo B",
+            mostrar_texto=False,
+            height=560,
+            xaxis_title="Tramo diario",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        st.markdown("#### Tabla diaria alineada")
+        _tabla_evolucion_diaria(df_comp_diario_view.rename(columns={"periodo_label": "dia_label"}), label_a, label_b)
+
     with tab_delitos:
         st.markdown(f"### Comparativo por Tipo de Delito: {label_a} vs {label_b}")
+        _render_advertencia_cobertura(cobertura_delitos, label_a, label_b, "delito")
         df_chart = df_comp_del[df_comp_del["categoria"] != "TOTAL"]
         if len(df_chart) > 0:
             fig = charts.barras_comparativo(
@@ -536,6 +653,7 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
 
     with tab_modalidades:
         st.markdown(f"### Comparativo por Modalidad Operativa: {label_a} vs {label_b}")
+        _render_advertencia_cobertura(cobertura_modalidades, label_a, label_b, "modalidad operativa")
         df_comp_modalidades = engine.comparativo_modalidades_operativas_rango(desde_b, hasta_b, desde_a, hasta_a)
         top_modalidades = st.slider(
             "Modalidades operativas a graficar",
@@ -564,6 +682,7 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
     with tab_comisarias:
         st.markdown(f"### Comparativo por Comisaría: {label_a} vs {label_b}")
         st.caption("La tabla enfrenta la misma dependencia en ambos periodos y muestra 0 cuando una comisaría no registra hechos en uno de los tramos.")
+        _render_advertencia_cobertura(cobertura_comisarias, label_a, label_b, "comisaría")
         top_n_comisarias = st.slider(
             "Cantidad de comisarías a graficar",
             min_value=5,
@@ -595,6 +714,14 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
             ["DELITO", "DIA_HECHO", "FRAN_HORAR", "LUGR_HECHO"],
             key="dimension_rangos",
         )
+        cobertura_dimension = engine.cobertura_comparativo_periodos_rango(
+            desde_b,
+            hasta_b,
+            desde_a,
+            hasta_a,
+            dimension,
+        )
+        _render_advertencia_cobertura(cobertura_dimension, label_a, label_b)
         df_comp = engine.comparativo_periodos_rango(desde_b, hasta_b, desde_a, hasta_a, dimension)
         _tabla_comparativa(
             df_comp,
@@ -629,6 +756,7 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
     slug_a = _slug_periodo(desde_a, hasta_a)
     slug_b = _slug_periodo(desde_b, hasta_b)
     excel_temporal = _to_excel_bytes({"Comparativo temporal": df_comp_temporal})
+    excel_diario = _to_excel_bytes({"Evolucion diaria": df_comp_diario})
     excel_detalle = _to_excel_bytes({"Detalle": df_comp})
     excel_comisarias = _to_excel_bytes({"Comisarias": df_comp_com})
     col_csv_1, col_xlsx_1 = st.columns(2)
@@ -649,27 +777,42 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
     col_csv_2, col_xlsx_2 = st.columns(2)
     with col_csv_2:
         st.download_button(
+            "⬇️ Evolución diaria (CSV)",
+            df_comp_diario.to_csv(index=False).encode("utf-8"),
+            f"comparativo_diario_{slug_a}_vs_{slug_b}.csv",
+            "text/csv",
+        )
+    with col_xlsx_2:
+        st.download_button(
+            "⬇️ Evolución diaria (Excel)",
+            excel_diario,
+            f"comparativo_diario_{slug_a}_vs_{slug_b}.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    col_csv_3, col_xlsx_3 = st.columns(2)
+    with col_csv_3:
+        st.download_button(
             "⬇️ Tabla detallada (CSV)",
             df_comp.to_csv(index=False).encode("utf-8"),
             f"comparativo_detalle_{dimension.lower()}_{slug_a}_vs_{slug_b}.csv",
             "text/csv",
         )
-    with col_xlsx_2:
+    with col_xlsx_3:
         st.download_button(
             "⬇️ Tabla detallada (Excel)",
             excel_detalle,
             f"comparativo_detalle_{dimension.lower()}_{slug_a}_vs_{slug_b}.xlsx",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-    col_csv_3, col_xlsx_3 = st.columns(2)
-    with col_csv_3:
+    col_csv_4, col_xlsx_4 = st.columns(2)
+    with col_csv_4:
         st.download_button(
             "⬇️ Tabla por comisaría (CSV)",
             df_comp_com.to_csv(index=False).encode("utf-8"),
             f"comparativo_comisarias_{slug_a}_vs_{slug_b}.csv",
             "text/csv",
         )
-    with col_xlsx_3:
+    with col_xlsx_4:
         st.download_button(
             "⬇️ Tabla por comisaría (Excel)",
             excel_comisarias,
