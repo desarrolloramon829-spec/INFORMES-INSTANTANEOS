@@ -8,6 +8,11 @@ from app.src.charts.generator import ChartGenerator
 from app.config.settings import UNIDADES_REGIONALES
 from app.src.ui.editorial import close_stage, open_stage, render_hero, render_panel, render_section_heading
 
+def _dataframe_height(row_count: int, base: int = 38, header: int = 38, padding: int = 6, maximum: int = 600) -> int:
+    """Calcula una altura ajustada al contenido para evitar filas vacías."""
+    visible_rows = max(row_count, 1)
+    return min(header + (visible_rows * base) + padding, maximum)
+
 
 def render():
     df = cargar_datos()
@@ -170,7 +175,12 @@ def render():
 
             display_geo = pivot_geo.copy()
             display_geo.insert(0, "Unidad Regional", display_geo.index)
-            st.dataframe(display_geo, hide_index=True, use_container_width=True, height=330)
+            st.dataframe(
+                display_geo,
+                hide_index=True,
+                use_container_width=True,
+                height=_dataframe_height(len(display_geo), base=35, header=40, padding=8, maximum=420),
+            )
 
     close_stage()
 

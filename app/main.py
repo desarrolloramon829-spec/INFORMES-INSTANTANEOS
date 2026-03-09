@@ -534,6 +534,19 @@ def inject_visual_system(theme_key: str):
         background: linear-gradient(180deg, rgba(93, 194, 154, 0.14) 0%, var(--app-surface) 100%);
     }}
 
+    .editorial-panel.panel-match-heatmap {{
+        min-height: 458px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+    }}
+
+    @media (max-width: 900px) {{
+        .editorial-panel.panel-match-heatmap {{
+            min-height: auto;
+        }}
+    }}
+
     footer {{ visibility: hidden; }}
 </style>
         """,

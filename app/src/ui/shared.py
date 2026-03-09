@@ -13,7 +13,12 @@ import unicodedata
 import streamlit as st
 import pandas as pd
 
-from app.src.data.loader import ShapefileLoader, parse_curly_braces
+from app.src.data.loader import (
+    ShapefileLoader,
+    extraer_anio_mes,
+    extraer_fecha,
+    parse_curly_braces,
+)
 from app.src.stats.engine import StatsEngine
 from app.config.settings import (
     MESES, MESES_LABELS, UNIDADES_REGIONALES, COMISARIAS_POR_REGION,
@@ -33,6 +38,44 @@ def _resolve_loader_debug_options() -> dict:
     }
 
 
+def _ensure_filter_schema(df: pd.DataFrame) -> pd.DataFrame:
+    """Reconstruye columnas derivadas y garantiza el esquema mínimo de filtros."""
+    if df is None:
+        df = pd.DataFrame()
+
+    df = df.copy()
+
+    if "_anio" not in df.columns and "anio" in df.columns:
+        df["_anio"] = pd.to_numeric(df["anio"], errors="coerce")
+
+    if "FECHA_HECH" in df.columns:
+        if "_anio" not in df.columns or "_mes_num" not in df.columns:
+            parsed = df["FECHA_HECH"].apply(extraer_anio_mes)
+            if "_anio" not in df.columns:
+                df["_anio"] = parsed.apply(lambda value: value[0])
+            if "_mes_num" not in df.columns:
+                df["_mes_num"] = parsed.apply(lambda value: value[1])
+
+        if "_fecha" not in df.columns:
+            df["_fecha"] = df["FECHA_HECH"].apply(extraer_fecha)
+
+    required_defaults = {
+        "_anio": None,
+        "_mes_num": None,
+        "_fecha": None,
+        "_unidad_regional": None,
+        "JURIS_HECH": None,
+        "DELITO": None,
+        "MODUS_OPER": None,
+        "MES_DENU": None,
+    }
+    for column, default in required_defaults.items():
+        if column not in df.columns:
+            df[column] = default
+
+    return df
+
+
 @st.cache_data(show_spinner="Cargando shapefiles... esto puede tomar unos minutos la primera vez.")
 def cargar_datos() -> pd.DataFrame:
     """Carga todos los shapefiles con caché de Streamlit."""
@@ -48,7 +91,7 @@ def cargar_datos() -> pd.DataFrame:
     df = loader.cargar_todo(use_cache=False, progress_callback=callback, **debug_options)
     progress_bar.empty()
     status_text.empty()
-    return df
+    return _ensure_filter_schema(df)
 
 
 def get_engine(df: pd.DataFrame = None) -> StatsEngine:
@@ -261,6 +304,7 @@ def render_filtros_sidebar(
         ``"fecha_rango"`` — no muestra ni aplica Desde / Hasta.
     """
     _excluir: set[str] = excluir or set()
+    df = _ensure_filter_schema(df)
 
     with st.sidebar:
         st.markdown("### 🎯 Filtros")

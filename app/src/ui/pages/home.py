@@ -58,11 +58,12 @@ def _render_section_heading(seq, kicker, titulo, cuerpo):
     )
 
 
-def _render_sequenced_panel(seq, kicker, titulo, cuerpo, tone=""):
+def _render_sequenced_panel(seq, kicker, titulo, cuerpo, tone="", extra_class=""):
     tone_class = f" {tone}" if tone else ""
+    extra_class_name = f" {extra_class}" if extra_class else ""
     st.markdown(
         f"""
-        <section class="editorial-panel scene-seq seq-{seq}{tone_class}">
+        <section class="editorial-panel scene-seq seq-{seq}{tone_class}{extra_class_name}">
             <div class="editorial-kicker">{escape(kicker)}</div>
             <h3>{escape(titulo)}</h3>
             <p>{escape(cuerpo)}</p>
@@ -222,10 +223,10 @@ def render():
 
     pivot_dia_franja = engine.matriz_dia_franja()
     if not pivot_dia_franja.empty:
+        st.markdown("### Día versus franja")
+        st.caption("Lectura compacta del cruce temporal más útil para detectar concentración operativa.")
         col_heatmap, col_summary = st.columns([1.7, 1])
         with col_heatmap:
-            st.markdown("### Día versus franja")
-            st.caption("Lectura compacta del cruce temporal más útil para detectar concentración operativa.")
             fig = charts.heatmap(pivot_dia_franja, "Mapa rápido día y franja", height=380)
             st.plotly_chart(fig, use_container_width=True)
 
@@ -238,6 +239,7 @@ def render():
                 "Mayor presión temporal",
                 f"La combinación más intensa se ubica en {dia_max} y {franja_max.replace(chr(10), ' / ')}, con {valor_maximo:,} hechos registrados.",
                 tone="accent",
+                extra_class="panel-match-heatmap",
             )
     else:
         st.info("No hay datos suficientes para resumir el cruce día versus franja.")

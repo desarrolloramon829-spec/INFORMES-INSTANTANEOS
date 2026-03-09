@@ -8,6 +8,12 @@ from app.src.charts.generator import ChartGenerator
 from app.src.ui.editorial import close_stage, open_stage, render_hero, render_panel, render_section_heading
 
 
+def _dataframe_height(row_count: int, base: int = 35, header: int = 40, padding: int = 8, maximum: int = 420) -> int:
+    """Calcula una altura ajustada al contenido para evitar filas vacías al final."""
+    visible_rows = max(row_count, 1)
+    return min(header + (visible_rows * base) + padding, maximum)
+
+
 def render():
     df = cargar_datos()
     df_filtered = render_filtros_sidebar(df)
@@ -203,7 +209,12 @@ def render():
 
             display_heatmap = pivot_dia_franja.copy()
             display_heatmap.insert(0, "Día", display_heatmap.index)
-            st.dataframe(display_heatmap, hide_index=True, use_container_width=True, height=360)
+            st.dataframe(
+                display_heatmap,
+                hide_index=True,
+                use_container_width=True,
+                height=_dataframe_height(len(display_heatmap)),
+            )
 
     close_stage()
 

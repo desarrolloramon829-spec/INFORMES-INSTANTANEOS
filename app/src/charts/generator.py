@@ -5,6 +5,7 @@ Usa Plotly para crear gráficos de barras, tortas, líneas y tablas interactivas
 from __future__ import annotations
 
 from typing import Optional
+import textwrap
 import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
@@ -39,6 +40,13 @@ def _trim_ticktext(values: list, max_chars: int = 22) -> list[str]:
         text = str(value)
         labels.append(text if len(text) <= max_chars else f"{text[:max_chars - 1]}…")
     return labels
+
+
+def _wrap_title(text: str, width: int = 28) -> str:
+    raw = str(text or "").strip()
+    if len(raw) <= width:
+        return raw
+    return "<br>".join(textwrap.wrap(raw, width=width, break_long_words=False))
 
 
 def _apply_axis_density(fig: go.Figure, categories: list, axis: str = "x") -> None:
@@ -278,34 +286,108 @@ class ChartGenerator:
     ) -> go.Figure:
         """Gráfico de dona (donut) con porcentajes."""
         theme = _get_active_theme()
+        df_plot = df[[col_cat, col_val]].copy()
+        df_plot = df_plot[df_plot[col_val].fillna(0) > 0]
+        df_plot = df_plot.sort_values(col_val, ascending=False).reset_index(drop=True)
+
+        if df_plot.empty:
+            fig = go.Figure()
+            fig.add_annotation(
+                text="Sin datos disponibles",
+                showarrow=False,
+                font=dict(size=16, color=theme["text_muted"]),
+            )
+            fig.update_layout(showlegend=False)
+            return _apply_base_layout(fig, titulo, height)
+
+        original_count = len(df_plot)
+        max_visible_slices = 7
+        if original_count > max_visible_slices:
+            top_df = df_plot.head(max_visible_slices).copy()
+            otros_valor = float(df_plot.iloc[max_visible_slices:][col_val].sum())
+            if otros_valor > 0:
+                top_df.loc[len(top_df)] = {
+                    col_cat: "Otros",
+                    col_val: otros_valor,
+                }
+            df_plot = top_df
+
         palette = _palette_by_chart(theme, "donut")
-        item_count = len(df)
-        compact_labels = item_count > 6
+        item_count = len(df_plot)
+        compact_labels = item_count > 4
+        show_legend = original_count > 4
+        text_threshold = 0.08 if item_count > 5 else 0.05
         fig = go.Figure()
 
+        pie_domain_x = [0.02, 0.62] if show_legend else [0.10, 0.90]
+
         fig.add_trace(go.Pie(
-            labels=df[col_cat],
-            values=df[col_val],
+            labels=df_plot[col_cat],
+            values=df_plot[col_val],
             hole=hole,
-            marker=dict(colors=palette[:len(df)], line=dict(color=theme["surface"], width=2)),
+            marker=dict(colors=palette[:item_count], line=dict(color=theme["surface"], width=2)),
             textinfo="percent" if compact_labels else "label+percent",
-            textposition="outside",
-            textfont=dict(color=theme["text"]),
+            textposition="inside" if compact_labels else "outside",
+            texttemplate="%{percent}" if compact_labels else "%{label}<br>%{percent}",
+            textfont=dict(color=theme["heading"], size=12),
+            insidetextorientation="horizontal",
+            automargin=True,
             hovertemplate="<b>%{label}</b><br>Cantidad: %{value:,}<br>%{percent}<extra></extra>",
             sort=False,
             pull=[0.03 if idx == 0 else 0 for idx in range(item_count)],
+            direction="clockwise",
+            rotation=90,
+            domain=dict(x=pie_domain_x, y=[0.08, 0.90]),
         ))
+
+        fig.update_traces(
+            selector=dict(type="pie"),
+            textfont_size=12,
+            textposition="inside" if compact_labels else "outside",
+            texttemplate=(
+                "%{percent}" if compact_labels else "%{label}<br>%{percent}"
+            ),
+        )
+
+        if compact_labels:
+            fig.data[0].update(
+                texttemplate=[f"%{{percent}}" if (value / df_plot[col_val].sum()) >= text_threshold else "" for value in df_plot[col_val]],
+            )
 
         total = df[col_val].sum()
         fig.add_annotation(
             text=f"<b>{int(total):,}</b><br>Total",
             showarrow=False,
             font=dict(size=16, color=theme["heading"]),
+            x=sum(pie_domain_x) / 2,
+            y=0.5,
         )
 
-        fig.update_layout(showlegend=item_count > 5)
+        wrapped_title = _wrap_title(titulo, width=26 if show_legend else 34)
+        fig = _apply_base_layout(fig, wrapped_title, height)
+        fig.update_layout(
+            showlegend=show_legend,
+            title=dict(
+                text=wrapped_title,
+                x=0.32 if show_legend else 0.5,
+                xanchor="center",
+                font=dict(family=TYPOGRAPHY["editorial"], size=18, color=theme["heading"]),
+            ),
+            legend=dict(
+                orientation="v",
+                yanchor="top",
+                y=0.96,
+                xanchor="left",
+                x=0.70,
+                bgcolor="rgba(0,0,0,0)",
+                font=dict(size=11, color=theme["text"]),
+                itemwidth=30,
+                tracegroupgap=6,
+            ),
+            margin=dict(l=28, r=220 if show_legend else 28, t=88, b=28),
+        )
 
-        return _apply_base_layout(fig, titulo, height)
+        return fig
 
     # ---- Gráfico de líneas (ideal para tendencias mensuales) ----
 

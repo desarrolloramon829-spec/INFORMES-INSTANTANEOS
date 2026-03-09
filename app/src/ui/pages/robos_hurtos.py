@@ -412,9 +412,7 @@ def render():
             continue
 
         html = _generar_tabla_html(tabla, titulo_ur)
-        # Calcular altura: título(50) + encabezado(40) + filas(38 c/u) + total(42) + margen(20)
-        altura = 50 + 40 + len(tabla) * 38 + 42 + 20
-        st.components.v1.html(html, height=altura, scrolling=False)
+        st.markdown(html, unsafe_allow_html=True)
 
         # Acumular para CSV
         tabla_export = tabla.copy()
