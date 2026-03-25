@@ -401,6 +401,7 @@ def render_filtros_sidebar(
             options=delitos,
             default=[],
             placeholder="Todos",
+            key="filtro_tipo_delito",
         )
 
         # ---- Filtro de Modus Operandi (multiselect) ----
