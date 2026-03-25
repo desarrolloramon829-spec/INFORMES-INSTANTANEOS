@@ -103,6 +103,60 @@ def _resolve_default_color(color: str, fallback: str) -> str:
     return fallback if color in legacy_defaults else color
 
 
+def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
+    """Convert a hex color string to RGB tuple."""
+    h = hex_color.lstrip("#")
+    return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+
+
+def _relative_luminance(r: int, g: int, b: int) -> float:
+    """Compute relative luminance (0=black, 1=white) per WCAG."""
+    def _linear(c: int) -> float:
+        s = c / 255.0
+        return s / 12.92 if s <= 0.04045 else ((s + 0.055) / 1.055) ** 2.4
+    return 0.2126 * _linear(r) + 0.7152 * _linear(g) + 0.0722 * _linear(b)
+
+
+def _interpolate_colorscale(value: float, colorscale: list[list]) -> str:
+    """Interpolate a hex color from a Plotly-style colorscale at a given 0-1 value."""
+    if value <= colorscale[0][0]:
+        return str(colorscale[0][1])
+    if value >= colorscale[-1][0]:
+        return str(colorscale[-1][1])
+    for i in range(len(colorscale) - 1):
+        lo_pos, lo_color = colorscale[i][0], str(colorscale[i][1])
+        hi_pos, hi_color = colorscale[i + 1][0], str(colorscale[i + 1][1])
+        if lo_pos <= value <= hi_pos:
+            t = (value - lo_pos) / (hi_pos - lo_pos) if hi_pos != lo_pos else 0.0
+            r1, g1, b1 = _hex_to_rgb(lo_color)
+            r2, g2, b2 = _hex_to_rgb(hi_color)
+            r = int(r1 + (r2 - r1) * t)
+            g = int(g1 + (g2 - g1) * t)
+            b = int(b1 + (b2 - b1) * t)
+            return f"#{r:02x}{g:02x}{b:02x}"
+    return str(colorscale[-1][1])
+
+
+def _adaptive_text_colors(z_values, colorscale: list[list], dark_text: str = "#11213c", light_text: str = "#f5f8ff") -> list[list[str]]:
+    """Build a 2D list of text colors (dark/light) based on cell background luminance."""
+    import numpy as np
+    z_arr = np.array(z_values, dtype=float)
+    z_min = float(z_arr.min()) if z_arr.size > 0 else 0.0
+    z_max = float(z_arr.max()) if z_arr.size > 0 else 1.0
+    z_range = z_max - z_min if z_max != z_min else 1.0
+
+    result: list[list[str]] = []
+    for row in z_arr:
+        row_colors: list[str] = []
+        for val in row:
+            norm = (float(val) - z_min) / z_range
+            bg_hex = _interpolate_colorscale(norm, colorscale)
+            lum = _relative_luminance(*_hex_to_rgb(bg_hex))
+            row_colors.append(dark_text if lum > 0.35 else light_text)
+        result.append(row_colors)
+    return result
+
+
 def _themed_colorscale(theme: dict) -> list[list[float | str]]:
     if theme["label"] == "Claro Institucional":
         return [
@@ -359,7 +413,8 @@ class ChartGenerator:
         text_threshold = 0.08 if item_count > 5 else 0.05
         fig = go.Figure()
 
-        pie_domain_x = [0.02, 0.62] if show_legend else [0.10, 0.90]
+        pie_domain_x = [0.05, 0.60] if show_legend else [0.10, 0.90]
+        pie_domain_y = [0.05, 0.88]
 
         fig.add_trace(go.Pie(
             labels=df_plot[col_cat],
@@ -377,7 +432,7 @@ class ChartGenerator:
             pull=[0.03 if idx == 0 else 0 for idx in range(item_count)],
             direction="clockwise",
             rotation=90,
-            domain=dict(x=pie_domain_x, y=[0.08, 0.90]),
+            domain=dict(x=pie_domain_x, y=pie_domain_y),
         ))
 
         fig.update_traces(
@@ -395,12 +450,16 @@ class ChartGenerator:
             )
 
         total = df[col_val].sum()
+        center_x = (pie_domain_x[0] + pie_domain_x[1]) / 2
+        center_y = (pie_domain_y[0] + pie_domain_y[1]) / 2
         fig.add_annotation(
             text=f"<b>{int(total):,}</b><br>Total",
             showarrow=False,
             font=dict(size=16, color=theme["heading"]),
-            x=sum(pie_domain_x) / 2,
-            y=0.5,
+            x=center_x,
+            y=center_y,
+            xanchor="center",
+            yanchor="middle",
         )
 
         wrapped_title = _wrap_title(titulo, width=26 if show_legend else 34)
@@ -409,22 +468,24 @@ class ChartGenerator:
             showlegend=show_legend,
             title=dict(
                 text=wrapped_title,
-                x=0.32 if show_legend else 0.5,
+                x=0.5,
                 xanchor="center",
+                y=0.98,
+                yanchor="top",
                 font=dict(family=TYPOGRAPHY["editorial"], size=18, color=theme["heading"]),
             ),
             legend=dict(
                 orientation="v",
                 yanchor="top",
-                y=0.96,
+                y=0.88,
                 xanchor="left",
-                x=0.70,
+                x=0.66,
                 bgcolor="rgba(0,0,0,0)",
                 font=dict(size=11, color=theme["text"]),
                 itemwidth=30,
                 tracegroupgap=6,
             ),
-            margin=dict(l=28, r=220 if show_legend else 28, t=88, b=28),
+            margin=dict(l=28, r=220 if show_legend else 28, t=60, b=28),
         )
 
         return fig
@@ -692,19 +753,36 @@ class ChartGenerator:
         x_labels = df_pivot.columns.tolist()
         y_labels = df_pivot.index.tolist()
 
+        active_colorscale = _themed_colorscale(theme) if colorscale == "YlOrRd" else colorscale
+
         fig = go.Figure(data=go.Heatmap(
             z=df_pivot.values,
             x=x_labels,
             y=y_labels,
-            colorscale=_themed_colorscale(theme) if colorscale == "YlOrRd" else colorscale,
-            text=df_pivot.values,
-            texttemplate="%{text:,}" if show_text else None,
-            textfont=dict(size=text_size, color=theme["heading"]),
+            colorscale=active_colorscale,
             hovertemplate="<b>%{y}</b> - %{x}<br>Cantidad: %{z:,}<extra></extra>",
             xgap=2,
             ygap=2,
             colorbar=dict(outlinewidth=0, tickfont=dict(color=theme["text"])),
         ))
+
+        # Add per-cell annotations: white text in dark mode, black text in light mode
+        if show_text:
+            cell_color = "#ffffff" if theme["label"] != "Claro Institucional" else "#000000"
+            annotations = []
+            for i, y_val in enumerate(y_labels):
+                for j, x_val in enumerate(x_labels):
+                    val = df_pivot.values[i][j]
+                    annotations.append(dict(
+                        x=x_val,
+                        y=y_val,
+                        text=f"{int(val):,}",
+                        showarrow=False,
+                        font=dict(size=text_size, color=cell_color),
+                        xref="x",
+                        yref="y",
+                    ))
+            fig.update_layout(annotations=annotations)
 
         fig.update_layout(
             xaxis_title="",
