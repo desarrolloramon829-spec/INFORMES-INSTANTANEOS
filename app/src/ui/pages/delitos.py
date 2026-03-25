@@ -42,9 +42,11 @@ def render():
         df_page = df_modalidades_base[
             df_modalidades_base["modalidad_operativa"].isin(modalidad_operativa_sel)
         ].copy()
-        engine = get_engine(df_page)
     else:
         df_page = df_filtered.copy()
+
+    # Always re-create engine from effectively filtered data
+    engine = get_engine(df_page)
 
     render_hero(
         "Modalidades delictivas",

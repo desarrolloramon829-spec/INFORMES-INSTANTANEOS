@@ -22,6 +22,7 @@ from app.config.settings import (
     DIAS_SEMANA,
     MESES,
     DELITO_CATEGORIAS,
+    FECHA_MINIMA_CARGA,
 )
 from app.config.shapefile_registry import (
     _SHAPEFILES,
@@ -424,6 +425,16 @@ class ShapefileLoader:
 
         combined = pd.concat(frames, ignore_index=True)
         combined = self._limpiar_datos(combined)
+
+        # Filtrar registros anteriores a FECHA_MINIMA_CARGA
+        if FECHA_MINIMA_CARGA and "_fecha" in combined.columns:
+            antes = len(combined)
+            combined = combined[
+                combined["_fecha"].isna() | (combined["_fecha"] >= FECHA_MINIMA_CARGA)
+            ]
+            descartados = antes - len(combined)
+            if descartados > 0:
+                logger.info("Descartados %d registros históricos (anteriores a %s)", descartados, FECHA_MINIMA_CARGA)
 
         if progress_callback:
             progress_callback(100, f"Carga completa: {len(combined):,} registros")

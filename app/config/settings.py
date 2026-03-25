@@ -2,11 +2,17 @@
 Configuración general de la aplicación Mapa Delictual.
 """
 import os
+import datetime
 
 # ============================================================
 # RUTAS
 # ============================================================
 BASE_SHAPEFILE_PATH = r"Z:\MAPA DEL DELITO\MAPAS DEL DELITO POR JURISDICCIONES"
+
+# ============================================================
+# FILTROS GLOBALES DE CARGA
+# ============================================================
+FECHA_MINIMA_CARGA = datetime.date(2024, 1, 1)
 
 # ============================================================
 # MAPEO DE COLUMNAS: nombre dBASE (10 chars) → nombre legible
