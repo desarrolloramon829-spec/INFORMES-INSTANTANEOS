@@ -259,20 +259,21 @@ class ShapefileLoader:
 
         intentos_descartados: list[dict] = []
 
-        # --- Paso 1: Detección inteligente con charset-normalizer ---
+        # --- Paso 1: Detección inteligente + lectura directa + ftfy ---
+        # No usamos _read_geofile aquí porque su check de warnings es
+        # innecesario: ftfy repara cualquier mojibake residual.
         encoding_detectado = detectar_encoding_dbf(full_path)
         if encoding_detectado:
             try:
-                gdf = self._read_geofile(full_path, key, encoding=encoding_detectado)
-                if gdf is not None:
-                    df = pd.DataFrame(gdf.drop(columns="geometry", errors="ignore"))
-                    # Reparar mojibake residual con ftfy
-                    df = reparar_texto_mojibake(df)
-                    df["_shapefile_key"] = key
-                    df["_unidad_regional"] = get_ur_from_key(key)
-                    logger.debug("Lectura exitosa de %s con encoding detectado '%s'", key, encoding_detectado)
-                    return df
-                intentos_descartados.append({"encoding": encoding_detectado, "motivo": "warning-conversion"})
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", RuntimeWarning)
+                    gdf = gpd.read_file(full_path, encoding=encoding_detectado)
+                df = pd.DataFrame(gdf.drop(columns="geometry", errors="ignore"))
+                df = reparar_texto_mojibake(df)
+                df["_shapefile_key"] = key
+                df["_unidad_regional"] = get_ur_from_key(key)
+                logger.debug("Lectura exitosa de %s con encoding detectado '%s'", key, encoding_detectado)
+                return df
             except Exception as exc:
                 intentos_descartados.append({"encoding": encoding_detectado, "motivo": type(exc).__name__})
 
