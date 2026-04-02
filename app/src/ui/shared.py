@@ -88,10 +88,18 @@ def cargar_datos() -> pd.DataFrame:
         status_text.text(msg)
 
     debug_options = _resolve_loader_debug_options()
-    df = loader.cargar_todo(use_cache=False, progress_callback=callback, **debug_options)
+    df = loader.cargar_todo(use_cache=True, progress_callback=callback, **debug_options)
     progress_bar.empty()
     status_text.empty()
     return _ensure_filter_schema(df)
+
+
+def regenerar_datos():
+    """Invalida todos los cachés y fuerza re-lectura desde shapefiles."""
+    loader = ShapefileLoader.get_instance()
+    loader.invalidar_cache(incluir_parquet=True)
+    cargar_datos.clear()  # Limpiar caché de Streamlit
+    st.rerun()
 
 
 def get_engine(df: pd.DataFrame = None) -> StatsEngine:
@@ -99,6 +107,14 @@ def get_engine(df: pd.DataFrame = None) -> StatsEngine:
     if df is None:
         df = cargar_datos()
     return StatsEngine(df)
+
+
+def render_boton_regenerar():
+    """Renderiza botón de regeneración de datos en el sidebar."""
+    with st.sidebar:
+        st.divider()
+        if st.button("🔄 Regenerar datos", help="Fuerza re-lectura desde shapefiles originales. Usar cuando hay datos nuevos."):
+            regenerar_datos()
 
 
 # ====================================================================

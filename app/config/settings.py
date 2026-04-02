@@ -10,6 +10,12 @@ import datetime
 BASE_SHAPEFILE_PATH = r"Z:\MAPA DEL DELITO\MAPAS DEL DELITO POR JURISDICCIONES"
 
 # ============================================================
+# CACHÉ PERSISTENTE
+# ============================================================
+CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "cache")
+CACHE_PARQUET_PATH = os.path.join(CACHE_DIR, "datos_consolidados.parquet")
+
+# ============================================================
 # FILTROS GLOBALES DE CARGA
 # ============================================================
 FECHA_MINIMA_CARGA = datetime.date(2024, 1, 1)

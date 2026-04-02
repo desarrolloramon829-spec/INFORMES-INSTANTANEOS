@@ -21,6 +21,7 @@ st.set_page_config(
 
 
 from app.src.ui.pages import home, delitos, temporal, caracteristicas, geografico, comparativo, robos_hurtos
+from app.src.ui.shared import render_boton_regenerar
 
 
 def inject_visual_system(theme_key: str):
@@ -597,7 +598,8 @@ def render_sidebar():
             label_visibility="collapsed",
         )
 
-        st.divider()
+        render_boton_regenerar()
+
         st.caption("v1.0 — Policía de Tucumán")
 
         return pagina

@@ -8,7 +8,9 @@ import json
 import os
 import re
 import logging
+import threading
 import warnings
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional
 
 import geopandas as gpd
@@ -17,6 +19,8 @@ import numpy as np
 
 from app.config.settings import (
     BASE_SHAPEFILE_PATH,
+    CACHE_DIR,
+    CACHE_PARQUET_PATH,
     VALORES_BASURA,
     FRANJAS_HORARIAS,
     DIAS_SEMANA,
@@ -28,6 +32,11 @@ from app.config.shapefile_registry import (
     _SHAPEFILES,
     get_full_path,
     get_ur_from_key,
+)
+from app.src.data.encoding_detector import (
+    detectar_encoding_dbf,
+    reparar_texto_mojibake,
+    leer_dbf_como_dataframe,
 )
 
 logger = logging.getLogger(__name__)
@@ -228,7 +237,15 @@ class ShapefileLoader:
     # ----- Lectura de un shapefile individual -----
 
     def _leer_shapefile(self, key: str) -> Optional[pd.DataFrame]:
-        """Lee un shapefile probando múltiples encodings."""
+        """
+        Lee un shapefile con detección inteligente de encoding.
+
+        Estrategia (de más rápido a más lento):
+        1. charset-normalizer detecta encoding del .dbf → 1 sola lectura
+        2. Si hay mojibake residual → ftfy lo repara en post-proceso
+        3. Si geopandas falla → fallback con _ENCODINGS clásicos
+        4. Si todo falla → dbfread lee el .dbf directamente (sin geometría)
+        """
         try:
             full_path = get_full_path(key)
         except KeyError:
@@ -242,22 +259,35 @@ class ShapefileLoader:
 
         intentos_descartados: list[dict] = []
 
+        # --- Paso 1: Detección inteligente con charset-normalizer ---
+        encoding_detectado = detectar_encoding_dbf(full_path)
+        if encoding_detectado:
+            try:
+                gdf = self._read_geofile(full_path, key, encoding=encoding_detectado)
+                if gdf is not None:
+                    df = pd.DataFrame(gdf.drop(columns="geometry", errors="ignore"))
+                    # Reparar mojibake residual con ftfy
+                    df = reparar_texto_mojibake(df)
+                    df["_shapefile_key"] = key
+                    df["_unidad_regional"] = get_ur_from_key(key)
+                    logger.debug("Lectura exitosa de %s con encoding detectado '%s'", key, encoding_detectado)
+                    return df
+                intentos_descartados.append({"encoding": encoding_detectado, "motivo": "warning-conversion"})
+            except Exception as exc:
+                intentos_descartados.append({"encoding": encoding_detectado, "motivo": type(exc).__name__})
+
+        # --- Paso 2: Fallback clásico con encodings conocidos ---
         for enc in _ENCODINGS:
+            if enc == encoding_detectado:
+                continue  # Ya lo intentamos en paso 1
             try:
                 gdf = self._read_geofile(full_path, key, encoding=enc)
                 if gdf is None:
                     intentos_descartados.append({"encoding": enc, "motivo": "warning-conversion"})
                     continue
-                # Eliminar geometría, trabajar con DataFrame plano
                 df = pd.DataFrame(gdf.drop(columns="geometry", errors="ignore"))
-                # Verificar mojibake: si hay secuencias corruptas, probar otro encoding
-                sample_text = " ".join(
-                    df.select_dtypes(include="object").head(50).fillna("").values.flatten()
-                )
-                if any(pat in sample_text for pat in _MOJIBAKE_PATTERNS):
-                    logger.debug("Mojibake detectado con encoding '%s' en %s, probando otro.", enc, key)
-                    intentos_descartados.append({"encoding": enc, "motivo": "mojibake"})
-                    continue
+                # Reparar mojibake residual con ftfy en vez de rechazar
+                df = reparar_texto_mojibake(df)
                 df["_shapefile_key"] = key
                 df["_unidad_regional"] = get_ur_from_key(key)
                 if intentos_descartados:
@@ -267,20 +297,32 @@ class ShapefileLoader:
                 intentos_descartados.append({"encoding": enc, "motivo": type(exc).__name__})
                 continue
 
-        # Último intento sin encoding explícito
+        # --- Paso 3: Autodetección sin encoding explícito + ftfy ---
         try:
             gdf = self._read_geofile(full_path, key)
             if gdf is None:
                 raise ValueError("advertencia de conversión durante autodetección de encoding")
             df = pd.DataFrame(gdf.drop(columns="geometry", errors="ignore"))
+            df = reparar_texto_mojibake(df)
             df["_shapefile_key"] = key
             df["_unidad_regional"] = get_ur_from_key(key)
             self._registrar_fallback_encoding(key, full_path, "auto", intentos_descartados)
             return df
-        except Exception as e:
-            logger.error("No se pudo leer %s: %s", key, e)
-            self._errores.append({"key": key, "error": str(e)})
-            return None
+        except Exception:
+            pass
+
+        # --- Paso 4: Fallback extremo con dbfread (recupera datos sin geometría) ---
+        logger.warning("geopandas falló para %s, intentando fallback dbfread...", key)
+        df = leer_dbf_como_dataframe(full_path)
+        if df is not None and len(df) > 0:
+            df["_shapefile_key"] = key
+            df["_unidad_regional"] = get_ur_from_key(key)
+            self._registrar_fallback_encoding(key, full_path, "dbfread", intentos_descartados)
+            return df
+
+        logger.error("No se pudo leer %s con ningún método", key)
+        self._errores.append({"key": key, "error": "todos los métodos fallaron"})
+        return None
 
     # ----- Normalización de esquema -----
 
@@ -381,6 +423,63 @@ class ShapefileLoader:
 
         return df
 
+    # ----- Caché Parquet persistente -----
+
+    @staticmethod
+    def _cache_parquet_es_valido() -> bool:
+        """
+        Verifica si el caché Parquet existe y es más reciente que todos los .shp.
+        Si la unidad de red no está disponible, acepta el caché existente.
+        """
+        if not os.path.exists(CACHE_PARQUET_PATH):
+            return False
+
+        cache_mtime = os.path.getmtime(CACHE_PARQUET_PATH)
+
+        # Verificar si la fuente de datos es accesible
+        if not os.path.exists(BASE_SHAPEFILE_PATH):
+            logger.warning(
+                "Unidad de red no disponible (%s). Usando caché Parquet existente.",
+                BASE_SHAPEFILE_PATH,
+            )
+            return True
+
+        # Comparar con el mtime más reciente de los .shp
+        for key in _SHAPEFILES:
+            try:
+                shp_path = get_full_path(key)
+                if os.path.exists(shp_path) and os.path.getmtime(shp_path) > cache_mtime:
+                    logger.info("Shapefile %s es más reciente que el caché. Se regenerará.", key)
+                    return False
+            except (KeyError, OSError):
+                continue
+
+        return True
+
+    @staticmethod
+    def _guardar_cache_parquet(df: pd.DataFrame) -> None:
+        """Guarda el DataFrame procesado como Parquet para carga instantánea futura."""
+        try:
+            os.makedirs(CACHE_DIR, exist_ok=True)
+            df.to_parquet(CACHE_PARQUET_PATH, engine="pyarrow", index=False)
+            logger.info("Caché Parquet guardado en %s (%d registros)", CACHE_PARQUET_PATH, len(df))
+        except Exception as e:
+            logger.warning("No se pudo guardar caché Parquet: %s", e)
+
+    @staticmethod
+    def _cargar_cache_parquet() -> Optional[pd.DataFrame]:
+        """Carga el DataFrame desde el caché Parquet."""
+        try:
+            df = pd.read_parquet(CACHE_PARQUET_PATH, engine="pyarrow")
+            # Restaurar columna _fecha como date (Parquet la guarda como datetime)
+            if "_fecha" in df.columns:
+                df["_fecha"] = pd.to_datetime(df["_fecha"], errors="coerce").dt.date
+            logger.info("Caché Parquet cargado: %d registros desde %s", len(df), CACHE_PARQUET_PATH)
+            return df
+        except Exception as e:
+            logger.warning("No se pudo leer caché Parquet: %s", e)
+            return None
+
     # ----- Métodos públicos de carga -----
 
     def cargar_todo(
@@ -392,16 +491,37 @@ class ShapefileLoader:
         """
         Carga y combina los 132 shapefiles en un único DataFrame normalizado.
 
+        Estrategia de carga (de más rápido a más lento):
+        1. Caché en memoria (instantáneo)
+        2. Caché Parquet en disco (< 2 segundos)
+        3. Lectura paralela de shapefiles con detección inteligente de encoding
+
         Args:
-            use_cache: Si True, devuelve el DataFrame cacheado si ya fue cargado.
+            use_cache: Si True, intenta devolver datos cacheados.
             progress_callback: Función f(pct, msg) para informar progreso.
             diagnostic_json_path: Ruta opcional para exportar un JSON de diagnóstico.
 
         Returns:
             DataFrame con todos los registros normalizados.
         """
+        # --- Nivel 1: Caché en memoria ---
         if use_cache and self._cache is not None:
             return self._cache
+
+        # --- Nivel 2: Caché Parquet en disco ---
+        if use_cache and self._cache_parquet_es_valido():
+            if progress_callback:
+                progress_callback(10, "Cargando desde caché local...")
+            df_cached = self._cargar_cache_parquet()
+            if df_cached is not None:
+                if progress_callback:
+                    progress_callback(100, f"Carga instantánea: {len(df_cached):,} registros desde caché")
+                self._cache = df_cached
+                return df_cached
+
+        # --- Nivel 3: Lectura paralela desde shapefiles ---
+        if progress_callback:
+            progress_callback(0, "Iniciando carga desde shapefiles con IA de encoding...")
 
         frames: list[pd.DataFrame] = []
         keys = list(_SHAPEFILES.keys())
@@ -409,19 +529,44 @@ class ShapefileLoader:
         self._errores = []
         self._encoding_fallbacks = []
 
-        for i, key in enumerate(keys):
-            if progress_callback:
-                pct = int((i / total) * 100)
-                progress_callback(pct, f"Cargando {key} ({i+1}/{total})...")
+        # Lock para progreso thread-safe
+        _progress_lock = threading.Lock()
+        _completed = [0]  # mutable para closure
 
+        def _procesar_shapefile(key: str) -> Optional[pd.DataFrame]:
+            """Carga y normaliza un shapefile individual (ejecutado en thread)."""
             df = self._leer_shapefile(key)
             if df is not None and len(df) > 0:
                 df = self._normalizar_esquema(df)
-                frames.append(df)
+                return df
+            return None
+
+        # ThreadPoolExecutor: 4 workers conservadores para I/O de red
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = {executor.submit(_procesar_shapefile, key): key for key in keys}
+
+            for future in as_completed(futures):
+                key = futures[future]
+                try:
+                    result = future.result()
+                    if result is not None:
+                        frames.append(result)
+                except Exception as exc:
+                    logger.error("Error procesando %s: %s", key, exc)
+                    self._errores.append({"key": key, "error": str(exc)})
+
+                with _progress_lock:
+                    _completed[0] += 1
+                    if progress_callback:
+                        pct = int((_completed[0] / total) * 95)  # Reservar 5% para post-proceso
+                        progress_callback(pct, f"Cargando shapefiles ({_completed[0]}/{total})...")
 
         if not frames:
             logger.error("No se pudo cargar ningún shapefile.")
             return pd.DataFrame()
+
+        if progress_callback:
+            progress_callback(96, "Combinando y limpiando datos...")
 
         combined = pd.concat(frames, ignore_index=True)
         combined = self._limpiar_datos(combined)
@@ -435,6 +580,12 @@ class ShapefileLoader:
             descartados = antes - len(combined)
             if descartados > 0:
                 logger.info("Descartados %d registros históricos (anteriores a %s)", descartados, FECHA_MINIMA_CARGA)
+
+        if progress_callback:
+            progress_callback(98, "Guardando caché para próxima carga instantánea...")
+
+        # Guardar caché Parquet para próxima vez
+        self._guardar_cache_parquet(combined)
 
         if progress_callback:
             progress_callback(100, f"Carga completa: {len(combined):,} registros")
@@ -515,9 +666,19 @@ class ShapefileLoader:
         combined = pd.concat(frames, ignore_index=True)
         return self._limpiar_datos(combined)
 
-    def invalidar_cache(self):
-        """Invalida el DataFrame cacheado para forzar recarga."""
+    def invalidar_cache(self, incluir_parquet: bool = False):
+        """Invalida el DataFrame cacheado para forzar recarga.
+
+        Args:
+            incluir_parquet: Si True, también elimina el caché Parquet en disco.
+        """
         self._cache = None
+        if incluir_parquet and os.path.exists(CACHE_PARQUET_PATH):
+            try:
+                os.remove(CACHE_PARQUET_PATH)
+                logger.info("Caché Parquet eliminado: %s", CACHE_PARQUET_PATH)
+            except OSError as e:
+                logger.warning("No se pudo eliminar caché Parquet: %s", e)
 
     @property
     def errores(self) -> list[dict]:
