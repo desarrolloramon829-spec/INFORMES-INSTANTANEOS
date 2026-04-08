@@ -120,7 +120,7 @@ def render():
                 df_modal_barras,
                 "Delitos por Modalidad",
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
             if len(df_modal) > len(df_modal_barras):
                 st.caption(
                     f"Se muestran las {len(df_modal_barras)} modalidades con mayor volumen. El detalle completo sigue disponible en la tabla de la izquierda y en la exportación CSV."
@@ -144,7 +144,7 @@ def render():
                     color="#2563EB",
                     highlight_max=True,
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
                 lider_detalle = df_modal_detalle.iloc[0]
                 st.caption(
@@ -159,7 +159,7 @@ def render():
                 st.dataframe(
                     display_detalle,
                     hide_index=True,
-                    use_container_width=True,
+                    width="stretch",
                     height=max(len(display_detalle) * 35 + 40, 420),
                 )
             else:
@@ -167,7 +167,7 @@ def render():
 
         with tab_dona:
             fig = charts.dona(df_modal, "Proporción por Tipo de Delito")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     close_stage()
 
@@ -210,7 +210,7 @@ def render():
                 col_mes_1, col_mes_2 = st.columns([1.8, 1])
                 with col_mes_1:
                     fig = charts.heatmap(pivot, "Intensidad de delitos por modalidad y mes")
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
                 with col_mes_2:
                     valor_maximo = int(pivot.to_numpy().max())
                     modalidad_max, mes_max = pivot.stack().idxmax()
@@ -241,7 +241,7 @@ def render():
             col_franja_1, col_franja_2 = st.columns([1.8, 1])
             with col_franja_1:
                 fig = charts.heatmap(pivot_franja, "Intensidad de delitos por modalidad y franja horaria")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
             with col_franja_2:
                 valor_maximo = int(pivot_franja.to_numpy().max())
                 modalidad_max, franja_max = pivot_franja.stack().idxmax()

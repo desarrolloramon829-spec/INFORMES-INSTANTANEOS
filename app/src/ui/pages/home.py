@@ -154,7 +154,7 @@ def render():
         if len(df_modal) > 0:
             fig = charts.barras_horizontal(df_modal, "Top Delitos por Modalidad")
             modal_chart_height = fig.layout.height
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.warning("Sin datos para mostrar")
 
@@ -164,7 +164,7 @@ def render():
         df_dia = engine.delitos_por_dia_semana()
         if len(df_dia) > 0:
             fig = charts.barras_vertical(df_dia, "Delitos por Día", height=modal_chart_height)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.warning("Sin datos para mostrar")
 
@@ -187,7 +187,7 @@ def render():
             )
             fig.update_xaxes(tickangle=0)
             fig.update_layout(margin=dict(b=120, t=78))
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.warning("Sin datos para mostrar")
 
@@ -209,7 +209,7 @@ def render():
                 ),
                 margin=dict(t=96, b=44, l=28, r=28),
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.warning("Sin datos para mostrar")
 
@@ -228,7 +228,7 @@ def render():
         col_heatmap, col_summary = st.columns([1.7, 1])
         with col_heatmap:
             fig = charts.heatmap(pivot_dia_franja, "Mapa rápido día y franja", height=380)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
         with col_summary:
             dia_max, franja_max = pivot_dia_franja.stack().idxmax()

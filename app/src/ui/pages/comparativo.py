@@ -317,7 +317,7 @@ def _render_comparativo_anual(engine, charts):
                 mostrar_texto=mostrar_texto,
                 height=520 if granularidad in {"semanas", "bisemanas", "trisemanas", "dias"} else 450,
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
             st.markdown(f"#### Tabla comparativa por {granularidad_label.lower()}")
             _tabla_comparativa(df_comp_temporal_view, "periodo_label", str(anio_anterior), str(anio_actual))
@@ -336,7 +336,7 @@ def _render_comparativo_anual(engine, charts):
                 label_y1=str(anio_anterior),
                 label_y2=str(anio_actual),
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
             st.markdown("#### Tabla comparativa por delito")
             _tabla_comparativa(
@@ -367,7 +367,7 @@ def _render_comparativo_anual(engine, charts):
                 label_y2=str(anio_actual),
                 height=max(500, len(df_chart_modalidades) * 28 + 180),
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.info("No hay datos suficientes para graficar modalidades operativas.")
 
@@ -395,7 +395,7 @@ def _render_comparativo_anual(engine, charts):
                 label_y2=str(anio_actual),
                 height=max(520, len(df_chart_com) * 30 + 220),
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.info("No hay datos suficientes para graficar el comparativo por comisaría.")
 
@@ -605,7 +605,7 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
             mostrar_texto=mostrar_texto,
             height=520 if granularidad in {"semanas", "bisemanas", "trisemanas", "dias"} else 450,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
         st.markdown(f"#### Tabla comparativa por {granularidad_label.lower()}")
         _tabla_comparativa(df_comp_temporal_view, "periodo_label", label_a, label_b)
 
@@ -623,7 +623,7 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
             height=560,
             xaxis_title="Tramo diario",
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
         st.markdown("#### Tabla diaria alineada")
         _tabla_evolucion_diaria(df_comp_diario_view.rename(columns={"periodo_label": "dia_label"}), label_a, label_b)
 
@@ -639,7 +639,7 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
                 label_y1="Periodo A",
                 label_y2="Periodo B",
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.info("No hay datos suficientes para graficar el comparativo por delito.")
 
@@ -672,7 +672,7 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
                 label_y2="Periodo B",
                 height=max(500, len(df_chart_modalidades) * 28 + 180),
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.info("No hay datos suficientes para graficar modalidades operativas.")
 
@@ -700,7 +700,7 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
                 label_y2="Periodo B",
                 height=max(500, len(df_chart_com) * 28 + 180),
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.info("No hay datos suficientes para graficar el comparativo por comisaría.")
 
@@ -846,7 +846,7 @@ def _tabla_comparativa(df, col_label, label_anterior, label_actual):
     st.dataframe(
         display[cols_to_show],
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
         column_config={
             "Dif.": st.column_config.NumberColumn(format="%+d"),
             "% Var.": st.column_config.NumberColumn(format="%+.1f%%"),
@@ -876,7 +876,7 @@ def _tabla_evolucion_diaria(df, label_anterior, label_actual):
             "% Var.",
         ]],
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
         column_config={
             "Dif.": st.column_config.NumberColumn(format="%+d"),
             "% Var.": st.column_config.NumberColumn(format="%+.1f%%"),

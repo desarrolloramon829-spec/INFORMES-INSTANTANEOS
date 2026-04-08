@@ -362,7 +362,7 @@ def render():
             "Participación global de robos y hurtos",
             height=shared_chart_height,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     with col_chart_right:
         if len(df_chart) > 0:
@@ -376,7 +376,7 @@ def render():
                 label_y2="Hurtos",
                 height=shared_chart_height,
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
             lider = df_chart.iloc[0]
             st.caption(

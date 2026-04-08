@@ -69,7 +69,7 @@ def render():
                     df_movil, "Medios de Movilidad",
                     color="#5B9BD5",
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
             with col2:
                 st.markdown("#### Detalle ejecutivo")
                 _mostrar_tabla(df_movil)
@@ -87,7 +87,7 @@ def render():
                     df_armas, "Armas Utilizadas en Hechos Delictivos",
                     color="#CC0000",
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
             with col2:
                 st.markdown("#### Detalle ejecutivo")
                 _mostrar_tabla(df_armas)
@@ -102,13 +102,13 @@ def render():
             col1, col2 = st.columns([1, 1])
             with col1:
                 fig = charts.dona(df_ambito, "Distribución por Ámbito")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
             with col2:
                 fig = charts.barras_horizontal(
                     df_ambito, "Delitos por Ámbito de Ocurrencia",
                     color="#70AD47",
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
     # ---- Modus Operandi ----
     with tab_modus:
@@ -122,7 +122,7 @@ def render():
                 df_modus, f"Top {top_n} Modus Operandi",
                 color="#9B59B6",
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     # ---- Hechos Resueltos ----
     with tab_resueltos:
@@ -134,7 +134,7 @@ def render():
             col1, col2 = st.columns([1, 1])
             with col1:
                 fig = charts.dona(df_resueltos, "Proporción de Hechos Resueltos")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
             with col2:
                 st.markdown("#### Detalle ejecutivo")
                 _mostrar_tabla(df_resueltos)
@@ -184,4 +184,4 @@ def _mostrar_tabla(df):
     display.columns = ["Categoría", "Cantidad", "%"]
     display["Cantidad"] = display["Cantidad"].astype(int)
     display["%"] = display["%"].apply(lambda x: f"{x:.1f}%")
-    st.dataframe(display, hide_index=True, use_container_width=True)
+    st.dataframe(display, hide_index=True, width="stretch")

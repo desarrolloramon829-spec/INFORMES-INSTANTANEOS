@@ -61,7 +61,7 @@ def _tabla_simple(df, col1_name, col2_name, col3_name):
     display.columns = [col1_name, col2_name, col3_name]
     display[col2_name] = display[col2_name].astype(int)
     display[col3_name] = display[col3_name].apply(lambda x: f"{x:.1f}%")
-    st.dataframe(display, hide_index=True, use_container_width=True)
+    st.dataframe(display, hide_index=True, width="stretch")
 
 
 def render():
@@ -132,7 +132,7 @@ def render():
             col1, col2 = st.columns([1.5, 1])
             with col1:
                 fig = charts.barras_vertical(df_dia, "Distribución por Día de la Semana", color="#4472C4")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
             with col2:
                 st.markdown("#### Detalle ejecutivo")
@@ -155,7 +155,7 @@ def render():
             col1, col2 = st.columns([1.5, 1])
             with col1:
                 fig = charts.barras_vertical(df_franja, "Distribución por Franja Horaria", color="#ED7D31")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
             with col2:
                 st.markdown("#### Detalle ejecutivo")
@@ -190,7 +190,7 @@ def render():
                     color="#9467BD",
                     height=520,
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
             with col2:
                 st.markdown("#### Detalle ejecutivo")
@@ -227,7 +227,7 @@ def render():
                     f"Distribución {granularidad_mensual_label} de Delitos",
                     color="#70AD47",
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
             with col2:
                 st.markdown("#### Detalle ejecutivo")
@@ -246,7 +246,7 @@ def render():
                 color="#5B9BD5",
                 col_cat="categoria",
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
             st.dataframe(
                 df_anio.rename(columns={
@@ -255,7 +255,7 @@ def render():
                     "porcentaje": "%",
                 }),
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
             )
 
     close_stage()
@@ -282,7 +282,7 @@ def render():
         col_hm_1, col_hm_2 = st.columns([1.8, 1])
         with col_hm_1:
             fig = charts.heatmap(pivot_dia_franja, "Intensidad de delitos por día y franja horaria", height=520)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
         with col_hm_2:
             valor_maximo = int(pivot_dia_franja.to_numpy().max())
@@ -302,7 +302,7 @@ def render():
             st.dataframe(
                 display_heatmap,
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
                 height=_dataframe_height(len(display_heatmap)),
             )
 

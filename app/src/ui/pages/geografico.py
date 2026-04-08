@@ -70,14 +70,14 @@ def render():
             col1, col2 = st.columns([1, 1])
             with col1:
                 fig = charts.dona(df_ur, "Distribución por Unidad Regional")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
             with col2:
                 fig = charts.barras_horizontal(
                     df_ur, "Ranking por Unidad Regional",
                     color="#2563EB",
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
             st.divider()
             st.markdown("#### Detalle ejecutivo")
@@ -85,7 +85,7 @@ def render():
             display.columns = ["Código", "Unidad Regional", "Cantidad", "%"]
             display["Cantidad"] = display["Cantidad"].astype(int)
             display["%"] = display["%"].apply(lambda x: f"{x:.1f}%")
-            st.dataframe(display, hide_index=True, use_container_width=True)
+            st.dataframe(display, hide_index=True, width="stretch")
 
     # ---- Jurisdicción ----
     with tab_juris:
@@ -101,7 +101,7 @@ def render():
                 f"Top {top_n} Jurisdicciones con más Delitos",
                 color="#4472C4",
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
             st.divider()
 
@@ -123,7 +123,7 @@ def render():
             display.columns = ["Jurisdicción", "Cantidad", "%"]
             display["Cantidad"] = display["Cantidad"].astype(int)
             display["%"] = display["%"].apply(lambda x: f"{x:.1f}%")
-            st.dataframe(display, hide_index=True, use_container_width=True,
+            st.dataframe(display, hide_index=True, width="stretch",
                           height=min(len(display) * 35 + 50, 600))
 
     close_stage()
@@ -158,7 +158,7 @@ def render():
         col_geo_1, col_geo_2 = st.columns([1.8, 1])
         with col_geo_1:
             fig = charts.heatmap(pivot_geo, "Intensidad territorial por unidad regional y modalidad", height=500)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
         with col_geo_2:
             valor_maximo = int(pivot_geo.to_numpy().max())
@@ -178,7 +178,7 @@ def render():
             st.dataframe(
                 display_geo,
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
                 height=_dataframe_height(len(display_geo), base=35, header=40, padding=8, maximum=420),
             )
 
