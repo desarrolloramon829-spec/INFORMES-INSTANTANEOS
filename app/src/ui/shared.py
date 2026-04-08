@@ -64,10 +64,17 @@ def _ensure_filter_schema(df: pd.DataFrame) -> pd.DataFrame:
         "_mes_num": None,
         "_fecha": None,
         "_unidad_regional": None,
+        "_shapefile_key": None,
         "JURIS_HECH": None,
         "DELITO": None,
         "MODUS_OPER": None,
         "MES_DENU": None,
+        "DIA_HECHO": None,
+        "FRAN_HORAR": None,
+        "HORA_HECH": None,
+        "FECHA_HECH": None,
+        "DPCIA_INT": None,
+        "HECH_RESUE": None,
     }
     for column, default in required_defaults.items():
         if column not in df.columns:

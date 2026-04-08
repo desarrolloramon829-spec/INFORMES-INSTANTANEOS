@@ -48,6 +48,8 @@ def _conteo_simple(
     Returns:
         DataFrame con columnas [categoria, cantidad, porcentaje].
     """
+    if campo not in df.columns:
+        return pd.DataFrame(columns=["categoria", "cantidad", "porcentaje", "categoria_label", "total"])
     series = df[campo].dropna()
     conteo = series.value_counts()
 
@@ -84,6 +86,8 @@ def _conteo_multivalor(
     """
     Conteo de campos con formato {val1,val2,...} (explotan en múltiples filas).
     """
+    if campo not in df.columns:
+        return pd.DataFrame(columns=["categoria", "cantidad", "porcentaje", "categoria_label", "total"])
     valores = df[campo].dropna().apply(parse_curly_braces).explode()
     valores = valores[valores.notna() & (valores != "")]
 
