@@ -20,13 +20,5 @@ streamlit>=1.30
 openpyxl>=3.1
 xlsxwriter>=3.1
 
-# --- IA de detección de encoding y reparación de texto ---
-charset-normalizer>=3.3
-ftfy>=6.1
-dbfread>=2.0
-
-# --- Caché persistente ---
-pyarrow>=14.0
-
 # --- Utilidades ---
 watchdog>=3.0
