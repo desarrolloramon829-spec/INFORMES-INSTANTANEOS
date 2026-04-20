@@ -30,8 +30,8 @@ echo  Cierra esta ventana para detener la app.
 echo.
 timeout /t 2 /nobreak >nul
 start "" http://localhost:8501
-if exist ".venv\Scripts\python.exe" (
-    .venv\Scripts\python.exe -m streamlit run app/main.py --server.port 8501 --server.headless false
+if exist ".venv_new\Scripts\python.exe" (
+    .venv_new\Scripts\python.exe -m streamlit run app/main.py --server.port 8501 --server.headless false
 ) else (
     python -m streamlit run app/main.py --server.port 8501 --server.headless false
 )
