@@ -384,15 +384,25 @@ def _serie_temporal_por_granularidad(df: pd.DataFrame, granularidad: str) -> pd.
     elif granularidad == "semanas":
         semanas = fechas.dt.isocalendar().week.astype(int)
         df_valid["bucket"] = semanas
-        df_valid["bucket_label"] = semanas.map(lambda x: _label_periodo_anual(granularidad, x))
+        inicio = (fechas - pd.to_timedelta(fechas.dt.weekday, unit="D"))
+        fin = inicio + pd.to_timedelta(6, unit="D")
+        df_valid["bucket_label"] = inicio.dt.strftime("%d/%m") + " al " + fin.dt.strftime("%d/%m")
     elif granularidad == "bisemanas":
         bisemanas = ((fechas.dt.isocalendar().week.astype(int) - 1) // 2) + 1
         df_valid["bucket"] = bisemanas
-        df_valid["bucket_label"] = bisemanas.map(lambda x: _label_periodo_anual(granularidad, x))
+        semana_inicio = (fechas - pd.to_timedelta(fechas.dt.weekday, unit="D")).dt.normalize()
+        desplazamiento = (fechas.dt.isocalendar().week.astype(int) - 1) % 2
+        inicio = semana_inicio - pd.to_timedelta(desplazamiento * 7, unit="D")
+        fin = inicio + pd.to_timedelta(13, unit="D")
+        df_valid["bucket_label"] = inicio.dt.strftime("%d/%m") + " al " + fin.dt.strftime("%d/%m")
     elif granularidad == "trisemanas":
         trisemanas = ((fechas.dt.isocalendar().week.astype(int) - 1) // 3) + 1
         df_valid["bucket"] = trisemanas
-        df_valid["bucket_label"] = trisemanas.map(lambda x: _label_periodo_anual(granularidad, x))
+        semana_inicio = (fechas - pd.to_timedelta(fechas.dt.weekday, unit="D")).dt.normalize()
+        desplazamiento = (fechas.dt.isocalendar().week.astype(int) - 1) % 3
+        inicio = semana_inicio - pd.to_timedelta(desplazamiento * 7, unit="D")
+        fin = inicio + pd.to_timedelta(20, unit="D")
+        df_valid["bucket_label"] = inicio.dt.strftime("%d/%m") + " al " + fin.dt.strftime("%d/%m")
     elif granularidad == "dias":
         df_valid["bucket"] = fechas.dt.strftime("%m-%d")
         df_valid["bucket_label"] = fechas.dt.strftime("%d/%m")
@@ -463,7 +473,16 @@ def _serie_temporal_rango_por_granularidad(df: pd.DataFrame, granularidad: str) 
         .sort_values("bucket_base", ignore_index=True)
     )
     agrupado["bucket"] = range(1, len(agrupado) + 1)
-    agrupado["periodo_label"] = agrupado["bucket"].map(lambda x: _label_periodo_rango(granularidad, int(x)))
+    if granularidad == "semanas":
+        agrupado["periodo_label"] = agrupado["bucket_base"].dt.strftime("%d/%m") + " al " + (agrupado["bucket_base"] + pd.to_timedelta(6, unit="D")).dt.strftime("%d/%m")
+    elif granularidad == "bisemanas":
+        agrupado["periodo_label"] = agrupado["bucket_base"].dt.strftime("%d/%m") + " al " + (agrupado["bucket_base"] + pd.to_timedelta(13, unit="D")).dt.strftime("%d/%m")
+    elif granularidad == "trisemanas":
+        agrupado["periodo_label"] = agrupado["bucket_base"].dt.strftime("%d/%m") + " al " + (agrupado["bucket_base"] + pd.to_timedelta(20, unit="D")).dt.strftime("%d/%m")
+    elif granularidad == "dias":
+        agrupado["periodo_label"] = agrupado["bucket_base"].dt.strftime("%d/%m")
+    else:
+        agrupado["periodo_label"] = agrupado["bucket"].map(lambda x: _label_periodo_rango(granularidad, int(x)))
     return agrupado[["bucket", "periodo_label", "cantidad"]]
 
 
@@ -617,33 +636,44 @@ class StatsEngine:
 
     # ---- Informe 6.2: Delitos por Día de la Semana ----
     def delitos_por_dia_semana(self) -> pd.DataFrame:
-        """Conteo de delitos agrupados por día de la semana."""
+        """Conteo de delitos agrupados por día de la semana (sin 'Sin Datos')."""
+        orden_sin_sd = [d for d in DIAS_SEMANA if d != "sin_datos"]
+        labels_sin_sd = {k: v for k, v in DIAS_LABELS.items() if k != "sin_datos"}
+        df_clean = self.df[self.df["DIA_HECHO"] != "sin_datos"] if "DIA_HECHO" in self.df.columns else self.df
         return _conteo_simple(
-            self.df, "DIA_HECHO",
-            orden=DIAS_SEMANA,
-            labels=DIAS_LABELS,
+            df_clean, "DIA_HECHO",
+            orden=orden_sin_sd,
+            labels=labels_sin_sd,
         )
 
     # ---- Informe 6.3: Delitos por Franja Horaria ----
     def delitos_por_franja_horaria(self) -> pd.DataFrame:
-        """Conteo de delitos agrupados por franja horaria."""
+        """Conteo de delitos agrupados por franja horaria (sin 'Sin Datos')."""
+        orden_sin_sd = [f for f in FRANJAS_HORARIAS if f != "SIN_DATOS"]
+        labels_sin_sd = {k: v for k, v in FRANJAS_LABELS.items() if k != "SIN_DATOS"}
+        df_clean = self.df[self.df["FRAN_HORAR"] != "SIN_DATOS"] if "FRAN_HORAR" in self.df.columns else self.df
         return _conteo_simple(
-            self.df, "FRAN_HORAR",
-            orden=FRANJAS_HORARIAS,
-            labels=FRANJAS_LABELS,
+            df_clean, "FRAN_HORAR",
+            orden=orden_sin_sd,
+            labels=labels_sin_sd,
         )
 
     def matriz_dia_franja(self) -> pd.DataFrame:
-        """Matriz de intensidad por día de semana y franja horaria."""
+        """Matriz de intensidad por día de semana y franja horaria (sin 'Sin Datos')."""
         if "DIA_HECHO" not in self.df.columns or "FRAN_HORAR" not in self.df.columns:
             return pd.DataFrame()
 
         df_valid = self.df[["DIA_HECHO", "FRAN_HORAR"]].dropna().copy()
+        df_valid = df_valid[
+            (df_valid["DIA_HECHO"] != "sin_datos") & (df_valid["FRAN_HORAR"] != "SIN_DATOS")
+        ]
         if df_valid.empty:
             return pd.DataFrame()
 
+        dias_sin_sd = [d for d in DIAS_SEMANA if d != "sin_datos"]
+        franjas_sin_sd = [f for f in FRANJAS_HORARIAS if f != "SIN_DATOS"]
         pivot = pd.crosstab(df_valid["DIA_HECHO"], df_valid["FRAN_HORAR"])
-        pivot = pivot.reindex(index=DIAS_SEMANA, columns=FRANJAS_HORARIAS, fill_value=0)
+        pivot = pivot.reindex(index=dias_sin_sd, columns=franjas_sin_sd, fill_value=0)
         pivot.index = [DIAS_LABELS.get(valor, valor) for valor in pivot.index]
         pivot.columns = [FRANJAS_LABELS.get(valor, valor) for valor in pivot.columns]
         return pivot
@@ -681,11 +711,12 @@ class StatsEngine:
         return self.delitos_por_granularidad_temporal(granularidad)
 
     def matriz_modalidad_franja(self, top_n_delitos: int = 8) -> pd.DataFrame:
-        """Matriz de intensidad por modalidad delictiva y franja horaria."""
+        """Matriz de intensidad por modalidad delictiva y franja horaria (sin 'Sin Datos')."""
         if "DELITO" not in self.df.columns or "FRAN_HORAR" not in self.df.columns:
             return pd.DataFrame()
 
         df_valid = self.df[["DELITO", "FRAN_HORAR"]].dropna().copy()
+        df_valid = df_valid[df_valid["FRAN_HORAR"] != "SIN_DATOS"]
         if df_valid.empty:
             return pd.DataFrame()
 
@@ -693,9 +724,10 @@ class StatsEngine:
         if not delitos_top:
             return pd.DataFrame()
 
+        franjas_sin_sd = [f for f in FRANJAS_HORARIAS if f != "SIN_DATOS"]
         df_valid = df_valid[df_valid["DELITO"].isin(delitos_top)].copy()
         pivot = pd.crosstab(df_valid["DELITO"], df_valid["FRAN_HORAR"])
-        pivot = pivot.reindex(index=delitos_top, columns=FRANJAS_HORARIAS, fill_value=0)
+        pivot = pivot.reindex(index=delitos_top, columns=franjas_sin_sd, fill_value=0)
         pivot.index = [_label_delito(valor) for valor in pivot.index]
         pivot.columns = [FRANJAS_LABELS.get(valor, valor) for valor in pivot.columns]
         return pivot

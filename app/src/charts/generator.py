@@ -92,7 +92,6 @@ def _apply_axis_density(fig: go.Figure, categories: list, axis: str = "x") -> No
 
 def _apply_trace_transitions(fig: go.Figure) -> go.Figure:
     fig.update_layout(
-        transition=dict(duration=420, easing="cubic-in-out"),
         hoverdistance=40,
     )
     return fig
@@ -220,7 +219,11 @@ def _build_layout_base(theme: dict) -> dict:
 
 def _apply_base_layout(fig: go.Figure, title: str = "", height: int = 450) -> go.Figure:
     """Aplica el estilo base a cualquier figura Plotly."""
+    from datetime import datetime
     theme = _get_active_theme()
+    
+    fecha_actual = datetime.now().strftime("%d/%m")
+    
     fig.update_layout(
         **_build_layout_base(theme),
         title=dict(text=title, x=0.5, font=dict(family=TYPOGRAPHY["editorial"], size=18, color=theme["heading"])),
@@ -228,6 +231,16 @@ def _apply_base_layout(fig: go.Figure, title: str = "", height: int = 450) -> go
         bargap=0.22,
         bargroupgap=0.08,
     )
+    
+    fig.add_annotation(
+        text=f"Fecha: {fecha_actual}",
+        xref="paper", yref="paper",
+        x=1.0, y=1.1,
+        xanchor="right", yanchor="bottom",
+        showarrow=False,
+        font=dict(size=12, color=theme.get("text_muted", "#888888"))
+    )
+    
     return _apply_trace_transitions(fig)
 
 
@@ -276,8 +289,8 @@ class ChartGenerator:
             marker_line=dict(color=theme["border"], width=1),
             text=df_plot.apply(
                 lambda r: f"{int(r[col_val]):,}  ({r[col_pct]:.1f}%)", axis=1
-            ) if show_text and col_pct in df_plot.columns else df_plot[col_val].apply(lambda value: f"{int(value):,}") if show_text else None,
-            textposition="outside" if show_text else "none",
+            ) if col_pct in df_plot.columns else df_plot[col_val].apply(lambda value: f"{int(value):,}"),
+            textposition="outside",
             textfont=dict(color=theme["text"]),
             hovertemplate="<b>%{y}</b><br>Cantidad: %{x:,}<extra></extra>",
             cliponaxis=False,
@@ -338,8 +351,8 @@ class ChartGenerator:
             y=df_plot[col_val],
             marker_color=colors,
             marker_line=dict(color=theme["border"], width=1),
-            text=df_plot[col_val].apply(lambda x: f"{int(x):,}") if show_text else None,
-            textposition="outside" if show_text else "none",
+            text=df_plot[col_val].apply(lambda x: f"{int(x):,}"),
+            textposition="outside",
             textfont=dict(color=theme["text"]),
             hovertemplate="<b>%{x}</b><br>Cantidad: %{y:,}<extra></extra>",
             cliponaxis=False,
@@ -410,7 +423,7 @@ class ChartGenerator:
         item_count = len(df_plot)
         compact_labels = item_count > 4
         show_legend = original_count > 4
-        text_threshold = 0.08 if item_count > 5 else 0.05
+        text_threshold = 0.02
         fig = go.Figure()
 
         pie_domain_x = [0.05, 0.60] if show_legend else [0.10, 0.90]
@@ -467,7 +480,6 @@ class ChartGenerator:
         fig.update_layout(
             showlegend=show_legend,
             title=dict(
-                text=wrapped_title,
                 x=0.5,
                 xanchor="center",
                 y=0.98,
@@ -516,9 +528,9 @@ class ChartGenerator:
         elif point_count > 10:
             height = max(height, 500)
 
-        text_y1 = df_plot[col_y1].apply(lambda x: f"{int(x):,}") if show_text else None
-        text_y2 = df_plot[col_y2].apply(lambda x: f"{int(x):,}") if show_text else None
-        mode = "lines+markers+text" if show_text else "lines+markers"
+        text_y1 = df_plot[col_y1].apply(lambda x: f"{int(x):,}")
+        text_y2 = df_plot[col_y2].apply(lambda x: f"{int(x):,}")
+        mode = "lines+markers+text"
 
         fig = go.Figure()
 
@@ -592,8 +604,8 @@ class ChartGenerator:
             y=df_plot[col_y1],
             marker_color=palette[0],
             marker_line=dict(color=theme["border"], width=1),
-            text=df_plot[col_y1].apply(lambda x: f"{int(x):,}") if show_text else None,
-            textposition="outside" if show_text else "none",
+            text=df_plot[col_y1].apply(lambda x: f"{int(x):,}"),
+            textposition="outside",
             textfont=dict(color=theme["text"]),
             cliponaxis=False,
         ))
@@ -604,8 +616,8 @@ class ChartGenerator:
             y=df_plot[col_y2],
             marker_color=palette[1],
             marker_line=dict(color=theme["border"], width=1),
-            text=df_plot[col_y2].apply(lambda x: f"{int(x):,}") if show_text else None,
-            textposition="outside" if show_text else "none",
+            text=df_plot[col_y2].apply(lambda x: f"{int(x):,}"),
+            textposition="outside",
             textfont=dict(color=theme["text"]),
             cliponaxis=False,
         ))
@@ -646,8 +658,8 @@ class ChartGenerator:
             orientation="h",
             marker_color=palette[0],
             marker_line=dict(color=theme["border"], width=1),
-            text=df_plot[col_y1].apply(lambda x: f"{int(x):,}") if show_text else None,
-            textposition="outside" if show_text else "none",
+            text=df_plot[col_y1].apply(lambda x: f"{int(x):,}"),
+            textposition="outside",
             textfont=dict(color=theme["text"]),
             cliponaxis=False,
             hovertemplate=f"<b>{label_y1}</b><br>%{{y}}: %{{x:,}}<extra></extra>",
@@ -660,8 +672,8 @@ class ChartGenerator:
             orientation="h",
             marker_color=palette[1],
             marker_line=dict(color=theme["border"], width=1),
-            text=df_plot[col_y2].apply(lambda x: f"{int(x):,}") if show_text else None,
-            textposition="outside" if show_text else "none",
+            text=df_plot[col_y2].apply(lambda x: f"{int(x):,}"),
+            textposition="outside",
             textfont=dict(color=theme["text"]),
             cliponaxis=False,
             hovertemplate=f"<b>{label_y2}</b><br>%{{y}}: %{{x:,}}<extra></extra>",
@@ -748,7 +760,7 @@ class ChartGenerator:
         row_count, col_count = df_pivot.shape
         adaptive_height = _adaptive_height(row_count, base=250, per_item=34, minimum=320, maximum=920)
         height = max(height, adaptive_height)
-        show_text = df_pivot.size <= 72
+        show_text = True
         text_size = 10 if row_count > 6 or col_count > 6 else 11
         x_labels = df_pivot.columns.tolist()
         y_labels = df_pivot.index.tolist()

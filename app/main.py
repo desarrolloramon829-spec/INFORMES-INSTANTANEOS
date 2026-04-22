@@ -571,30 +571,40 @@ def render_sidebar():
         st.caption("Sistema de Informes Estadísticos")
         tema_label = VISUAL_THEMES[tema_actual]["label"]
         st.caption(f"Tema activo: {tema_label}")
-        tema_sel = st.radio(
+
+        def _on_theme_change():
+            st.session_state["app_theme"] = st.session_state["_theme_radio"]
+
+        temas_keys = list(VISUAL_THEMES.keys())
+        st.radio(
             "Tema visual",
-            options=list(VISUAL_THEMES.keys()),
-            index=list(VISUAL_THEMES.keys()).index(tema_actual),
+            options=temas_keys,
+            index=temas_keys.index(tema_actual),
             format_func=lambda key: VISUAL_THEMES[key]["label"],
             horizontal=False,
+            key="_theme_radio",
+            on_change=_on_theme_change,
         )
-        if tema_sel != tema_actual:
-            st.session_state["app_theme"] = tema_sel
-            st.rerun()
         st.divider()
 
         # Navegación
+        PAGINAS = [
+            "🏠 Inicio",
+            "📋 Delitos por Modalidad",
+            "🔫 Robos y Hurtos",
+            "📅 Análisis Temporal",
+            "🔍 Características",
+            "🗺️ Análisis Geográfico",
+            "📈 Comparativo",
+        ]
+        pagina_guardada = st.session_state.get("app_pagina", "🏠 Inicio")
+        idx_actual = PAGINAS.index(pagina_guardada) if pagina_guardada in PAGINAS else 0
+
         pagina = st.radio(
             "📊 Navegación",
-            [
-                "🏠 Inicio",
-                "📋 Delitos por Modalidad",
-                "🔫 Robos y Hurtos",
-                "📅 Análisis Temporal",
-                "🔍 Características",
-                "🗺️ Análisis Geográfico",
-                "📈 Comparativo",
-            ],
+            PAGINAS,
+            index=idx_actual,
+            key="app_pagina",
             label_visibility="collapsed",
         )
 
@@ -612,6 +622,8 @@ def render_sidebar():
 def main():
     if "app_theme" not in st.session_state:
         st.session_state["app_theme"] = "oscuro"
+    if "app_pagina" not in st.session_state:
+        st.session_state["app_pagina"] = "🏠 Inicio"
 
     inject_visual_system(st.session_state["app_theme"])
     pagina = render_sidebar()

@@ -96,6 +96,7 @@ def _construir_tabla_regional(
     """
     Construye un DataFrame con columnas [COMISARIAS, ROBOS, HURTOS, TOTAL]
     para una Unidad Regional dada.
+    Solo incluye comisarías oficiales definidas en COMISARIAS_POR_REGION.
     """
     # 1) Filtrar registros de esta UR
     df_ur = df[
@@ -108,11 +109,14 @@ def _construir_tabla_regional(
     df_ur["_es_hurto"] = df_ur["DELITO"].isin(_DELITOS_HURTO)
 
     # 3) Obtener mapeo display_name → juris_codes
-    display_names, juris_match_map = _build_juris_match(df, ur_code)
+    _, juris_match_map = _build_juris_match(df, ur_code)
 
-    # 4) Construir filas
+    # 4) Usar SOLO las comisarías oficiales de COMISARIAS_POR_REGION
+    official_names = COMISARIAS_POR_REGION.get(ur_code, [])
+
+    # 5) Construir filas solo para comisarías oficiales
     filas = []
-    for name in display_names:
+    for name in official_names:
         codes = juris_match_map.get(name, [])
         if not codes:
             continue
@@ -125,28 +129,6 @@ def _construir_tabla_regional(
             "HURTOS": hurtos,
             "TOTAL": robos + hurtos,
         })
-
-    # Capturar registros sin match (fallback)
-    matched_codes = set()
-    for codes in juris_match_map.values():
-        matched_codes.update(codes)
-    unmatched = set(df_ur["JURIS_HECH"].dropna().unique()) - matched_codes
-    for code in sorted(unmatched):
-        mask = df_ur["JURIS_HECH"] == code
-        robos = int(df_ur.loc[mask, "_es_robo"].sum())
-        hurtos = int(df_ur.loc[mask, "_es_hurto"].sum())
-        if robos + hurtos > 0:
-            label = (
-                code.replace("_", " ")
-                .replace(f"{ur_code} ", "")
-                .title()
-            )
-            filas.append({
-                "COMISARIAS": label.upper(),
-                "ROBOS": robos,
-                "HURTOS": hurtos,
-                "TOTAL": robos + hurtos,
-            })
 
     if not filas:
         return pd.DataFrame(columns=["COMISARIAS", "ROBOS", "HURTOS", "TOTAL"])
@@ -414,6 +396,30 @@ def render():
         html = _generar_tabla_html(tabla, titulo_ur)
         st.markdown(html, unsafe_allow_html=True)
 
+        # Botones de descarga individual por regional
+        col_csv, col_excel, _ = st.columns([1, 1, 3])
+        with col_csv:
+            csv_individual = tabla.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                f"⬇️ CSV {ur_code}",
+                data=csv_individual,
+                file_name=f"robos_hurtos_{ur_code}.csv",
+                mime="text/csv",
+                key=f"download_csv_{ur_code}",
+            )
+        with col_excel:
+            import io
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+                tabla.to_excel(writer, index=False, sheet_name=titulo_ur[:31])
+            st.download_button(
+                f"⬇️ Excel {ur_code}",
+                data=buffer.getvalue(),
+                file_name=f"robos_hurtos_{ur_code}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key=f"download_excel_{ur_code}",
+            )
+
         # Acumular para CSV
         tabla_export = tabla.copy()
         tabla_export.insert(0, "UNIDAD_REGIONAL", titulo_ur)
@@ -439,12 +445,32 @@ def render():
         )
         st.markdown("### Descarga documental")
         df_export = pd.concat(tablas_csv, ignore_index=True)
-        # Agregar fila total por UR
-        csv = df_export.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            "⬇️ Descargar Robos y Hurtos (CSV)",
-            data=csv,
-            file_name="robos_y_hurtos_por_regional.csv",
-            mime="text/csv",
-        )
+
+        col_csv_all, col_excel_all = st.columns(2)
+        with col_csv_all:
+            csv = df_export.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                "⬇️ Descargar Todo (CSV)",
+                data=csv,
+                file_name="robos_y_hurtos_por_regional.csv",
+                mime="text/csv",
+                key="download_csv_consolidado",
+            )
+        with col_excel_all:
+            import io
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+                df_export.to_excel(writer, index=False, sheet_name="Consolidado")
+                # Una hoja por regional
+                for tabla_ur in tablas_csv:
+                    ur_name = tabla_ur["UNIDAD_REGIONAL"].iloc[0] if len(tabla_ur) > 0 else "Regional"
+                    sheet_name = ur_name[:31]  # Excel limita a 31 chars
+                    tabla_ur.to_excel(writer, index=False, sheet_name=sheet_name)
+            st.download_button(
+                "⬇️ Descargar Todo (Excel)",
+                data=buffer.getvalue(),
+                file_name="robos_y_hurtos_por_regional.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="download_excel_consolidado",
+            )
         close_stage()
