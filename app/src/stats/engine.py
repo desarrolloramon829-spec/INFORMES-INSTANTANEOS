@@ -382,27 +382,49 @@ def _serie_temporal_por_granularidad(df: pd.DataFrame, granularidad: str) -> pd.
         df_valid["bucket"] = fechas.dt.month
         df_valid["bucket_label"] = df_valid["bucket"].map(lambda x: _label_periodo_anual(granularidad, x))
     elif granularidad == "semanas":
-        semanas = fechas.dt.isocalendar().week.astype(int)
-        df_valid["bucket"] = semanas
-        inicio = (fechas - pd.to_timedelta(fechas.dt.weekday, unit="D"))
-        fin = inicio + pd.to_timedelta(6, unit="D")
-        df_valid["bucket_label"] = inicio.dt.strftime("%d/%m") + " al " + fin.dt.strftime("%d/%m")
+        # Semanas que empiezan siempre el 01/01 (prolijo para comparativos anuales)
+        day_of_year = fechas.dt.dayofyear
+        df_valid["bucket"] = ((day_of_year - 1) // 7) + 1
+        
+        # Etiquetas prolijas (01/01 al 07/01, etc.)
+        anios = fechas.dt.year
+        anio_inicio = pd.to_datetime(anios.astype(str) + "-01-01")
+        inicio_sem = anio_inicio + pd.to_timedelta((df_valid["bucket"] - 1) * 7, unit="D")
+        fin_sem = inicio_sem + pd.to_timedelta(6, unit="D")
+        
+        # Tope en el último día del año para que sea prolijo
+        anio_fin = pd.to_datetime(anios.astype(str) + "-12-31")
+        fin_sem = pd.to_datetime(np.where(fin_sem > anio_fin, anio_fin, fin_sem))
+        
+        df_valid["bucket_label"] = inicio_sem.dt.strftime("%d/%m") + " al " + fin_sem.strftime("%d/%m")
+        
     elif granularidad == "bisemanas":
-        bisemanas = ((fechas.dt.isocalendar().week.astype(int) - 1) // 2) + 1
-        df_valid["bucket"] = bisemanas
-        semana_inicio = (fechas - pd.to_timedelta(fechas.dt.weekday, unit="D")).dt.normalize()
-        desplazamiento = (fechas.dt.isocalendar().week.astype(int) - 1) % 2
-        inicio = semana_inicio - pd.to_timedelta(desplazamiento * 7, unit="D")
-        fin = inicio + pd.to_timedelta(13, unit="D")
-        df_valid["bucket_label"] = inicio.dt.strftime("%d/%m") + " al " + fin.dt.strftime("%d/%m")
+        day_of_year = fechas.dt.dayofyear
+        df_valid["bucket"] = ((day_of_year - 1) // 14) + 1
+        
+        anios = fechas.dt.year
+        anio_inicio = pd.to_datetime(anios.astype(str) + "-01-01")
+        inicio_sem = anio_inicio + pd.to_timedelta((df_valid["bucket"] - 1) * 14, unit="D")
+        fin_sem = inicio_sem + pd.to_timedelta(13, unit="D")
+        
+        anio_fin = pd.to_datetime(anios.astype(str) + "-12-31")
+        fin_sem = pd.to_datetime(np.where(fin_sem > anio_fin, anio_fin, fin_sem))
+        
+        df_valid["bucket_label"] = inicio_sem.dt.strftime("%d/%m") + " al " + fin_sem.strftime("%d/%m")
+        
     elif granularidad == "trisemanas":
-        trisemanas = ((fechas.dt.isocalendar().week.astype(int) - 1) // 3) + 1
-        df_valid["bucket"] = trisemanas
-        semana_inicio = (fechas - pd.to_timedelta(fechas.dt.weekday, unit="D")).dt.normalize()
-        desplazamiento = (fechas.dt.isocalendar().week.astype(int) - 1) % 3
-        inicio = semana_inicio - pd.to_timedelta(desplazamiento * 7, unit="D")
-        fin = inicio + pd.to_timedelta(20, unit="D")
-        df_valid["bucket_label"] = inicio.dt.strftime("%d/%m") + " al " + fin.dt.strftime("%d/%m")
+        day_of_year = fechas.dt.dayofyear
+        df_valid["bucket"] = ((day_of_year - 1) // 21) + 1
+        
+        anios = fechas.dt.year
+        anio_inicio = pd.to_datetime(anios.astype(str) + "-01-01")
+        inicio_sem = anio_inicio + pd.to_timedelta((df_valid["bucket"] - 1) * 21, unit="D")
+        fin_sem = inicio_sem + pd.to_timedelta(20, unit="D")
+        
+        anio_fin = pd.to_datetime(anios.astype(str) + "-12-31")
+        fin_sem = pd.to_datetime(np.where(fin_sem > anio_fin, anio_fin, fin_sem))
+        
+        df_valid["bucket_label"] = inicio_sem.dt.strftime("%d/%m") + " al " + fin_sem.strftime("%d/%m")
     elif granularidad == "dias":
         df_valid["bucket"] = fechas.dt.strftime("%m-%d")
         df_valid["bucket_label"] = fechas.dt.strftime("%d/%m")
@@ -452,15 +474,20 @@ def _serie_temporal_rango_por_granularidad(df: pd.DataFrame, granularidad: str) 
     elif granularidad == "meses":
         df_valid["bucket_base"] = fechas.dt.to_period("M").dt.to_timestamp()
     elif granularidad == "semanas":
-        df_valid["bucket_base"] = (fechas - pd.to_timedelta(fechas.dt.weekday, unit="D")).dt.normalize()
+        day_of_year = fechas.dt.dayofyear
+        week_num = ((day_of_year - 1) // 7) + 1
+        anio_inicio = pd.to_datetime(fechas.dt.year.astype(str) + "-01-01")
+        df_valid["bucket_base"] = anio_inicio + pd.to_timedelta((week_num - 1) * 7, unit="D")
     elif granularidad == "bisemanas":
-        semana_inicio = (fechas - pd.to_timedelta(fechas.dt.weekday, unit="D")).dt.normalize()
-        desplazamiento = (fechas.dt.isocalendar().week.astype(int) - 1) % 2
-        df_valid["bucket_base"] = semana_inicio - pd.to_timedelta(desplazamiento * 7, unit="D")
+        day_of_year = fechas.dt.dayofyear
+        week_num = ((day_of_year - 1) // 14) + 1
+        anio_inicio = pd.to_datetime(fechas.dt.year.astype(str) + "-01-01")
+        df_valid["bucket_base"] = anio_inicio + pd.to_timedelta((week_num - 1) * 14, unit="D")
     elif granularidad == "trisemanas":
-        semana_inicio = (fechas - pd.to_timedelta(fechas.dt.weekday, unit="D")).dt.normalize()
-        desplazamiento = (fechas.dt.isocalendar().week.astype(int) - 1) % 3
-        df_valid["bucket_base"] = semana_inicio - pd.to_timedelta(desplazamiento * 7, unit="D")
+        day_of_year = fechas.dt.dayofyear
+        week_num = ((day_of_year - 1) // 21) + 1
+        anio_inicio = pd.to_datetime(fechas.dt.year.astype(str) + "-01-01")
+        df_valid["bucket_base"] = anio_inicio + pd.to_timedelta((week_num - 1) * 21, unit="D")
     elif granularidad == "dias":
         df_valid["bucket_base"] = fechas.dt.normalize()
     else:
@@ -474,11 +501,20 @@ def _serie_temporal_rango_por_granularidad(df: pd.DataFrame, granularidad: str) 
     )
     agrupado["bucket"] = range(1, len(agrupado) + 1)
     if granularidad == "semanas":
-        agrupado["periodo_label"] = agrupado["bucket_base"].dt.strftime("%d/%m") + " al " + (agrupado["bucket_base"] + pd.to_timedelta(6, unit="D")).dt.strftime("%d/%m")
+        fin_sem = agrupado["bucket_base"] + pd.to_timedelta(6, unit="D")
+        anio_fin = pd.to_datetime(agrupado["bucket_base"].dt.year.astype(str) + "-12-31")
+        fin_sem = pd.to_datetime(np.where(fin_sem > anio_fin, anio_fin, fin_sem))
+        agrupado["periodo_label"] = agrupado["bucket_base"].dt.strftime("%d/%m") + " al " + fin_sem.strftime("%d/%m")
     elif granularidad == "bisemanas":
-        agrupado["periodo_label"] = agrupado["bucket_base"].dt.strftime("%d/%m") + " al " + (agrupado["bucket_base"] + pd.to_timedelta(13, unit="D")).dt.strftime("%d/%m")
+        fin_sem = agrupado["bucket_base"] + pd.to_timedelta(13, unit="D")
+        anio_fin = pd.to_datetime(agrupado["bucket_base"].dt.year.astype(str) + "-12-31")
+        fin_sem = pd.to_datetime(np.where(fin_sem > anio_fin, anio_fin, fin_sem))
+        agrupado["periodo_label"] = agrupado["bucket_base"].dt.strftime("%d/%m") + " al " + fin_sem.strftime("%d/%m")
     elif granularidad == "trisemanas":
-        agrupado["periodo_label"] = agrupado["bucket_base"].dt.strftime("%d/%m") + " al " + (agrupado["bucket_base"] + pd.to_timedelta(20, unit="D")).dt.strftime("%d/%m")
+        fin_sem = agrupado["bucket_base"] + pd.to_timedelta(20, unit="D")
+        anio_fin = pd.to_datetime(agrupado["bucket_base"].dt.year.astype(str) + "-12-31")
+        fin_sem = pd.to_datetime(np.where(fin_sem > anio_fin, anio_fin, fin_sem))
+        agrupado["periodo_label"] = agrupado["bucket_base"].dt.strftime("%d/%m") + " al " + fin_sem.strftime("%d/%m")
     elif granularidad == "dias":
         agrupado["periodo_label"] = agrupado["bucket_base"].dt.strftime("%d/%m")
     else:
