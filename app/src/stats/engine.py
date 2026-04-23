@@ -1183,8 +1183,8 @@ class StatsEngine:
 
     def filtrar(
         self,
-        anio: Optional[int] = None,
-        mes: Optional[str] = None,
+        anio: Optional[int | list[int]] = None,
+        mes: Optional[str | list[str]] = None,
         ur: Optional[str] = None,
         delito: Optional[str] = None,
         jurisdiccion: Optional[str] = None,
@@ -1195,24 +1195,31 @@ class StatsEngine:
         Devuelve un nuevo StatsEngine con el DataFrame filtrado.
 
         Uso encadenado:
-            engine.filtrar(anio=2023, ur="URC").delitos_por_modalidad()
+            engine.filtrar(anio=[2023, 2024], ur="URC").delitos_por_modalidad()
         """
         df = self.df.copy()
         if anio is not None:
-            df = df[df["_anio"] == anio]
+            if isinstance(anio, list):
+                df = df[df["_anio"].isin(anio)]
+            else:
+                df = df[df["_anio"] == anio]
         if mes is not None:
-            df = df[df["MES_DENU"] == mes.lower()]
+            if isinstance(mes, list):
+                mes_lower = [m.lower() for m in mes]
+                df = df[df["MES_DENU"].isin(mes_lower)]
+            else:
+                df = df[df["MES_DENU"] == mes.lower()]
         if ur is not None:
             df = df[df["_unidad_regional"] == ur.upper()]
         if delito is not None:
             df = df[df["DELITO"] == delito]
         if jurisdiccion is not None:
             df = df[df["JURIS_HECH"] == jurisdiccion]
-        if fecha_desde is not None and fecha_hasta is not None and "_fecha" in df.columns:
-            mask = df["_fecha"].apply(
-                lambda x: fecha_desde <= x <= fecha_hasta if pd.notna(x) and x is not None else False
-            )
-            df = df[mask]
+        if "_fecha" in df.columns:
+            if fecha_desde is not None:
+                df = df[df["_fecha"] >= fecha_desde]
+            if fecha_hasta is not None:
+                df = df[df["_fecha"] <= fecha_hasta]
         return StatsEngine(df)
 
     def _filtrar_df_por_rango_fecha(self, fecha_desde: date, fecha_hasta: date) -> pd.DataFrame:
@@ -1224,6 +1231,36 @@ class StatsEngine:
             lambda x: fecha_desde <= x <= fecha_hasta if pd.notna(x) and x is not None else False
         )
         return self.df[mask].copy()
+
+    def comparativo_personalizado(
+        self,
+        engine_anterior: "StatsEngine",
+        engine_actual: "StatsEngine",
+        dimension: str,
+    ) -> pd.DataFrame:
+        """
+        Realiza una comparación entre dos motores de estadísticas (periodos o filtros arbitrarios).
+        """
+        return self._comparativo_entre_dataframes(engine_actual.df, engine_anterior.df, dimension)
+
+    def cobertura_personalizado(
+        self,
+        engine_anterior: "StatsEngine",
+        engine_actual: "StatsEngine",
+        campo: str,
+        campos_requeridos: Optional[list[str]] = None,
+    ) -> dict:
+        """Devuelve la cobertura real de una dimensión comparativa entre dos motores."""
+        campos = campos_requeridos or [campo]
+        return self._resumen_cobertura_dimension(engine_actual.df, engine_anterior.df, campo, campos)
+
+    def comparativo_modalidades_personalizado(
+        self,
+        engine_anterior: "StatsEngine",
+        engine_actual: "StatsEngine",
+    ) -> pd.DataFrame:
+        """Compara modalidades operativas reales entre dos motores."""
+        return self._comparativo_modalidades_operativas_df(engine_actual.df, engine_anterior.df)
 
     def _comparativo_entre_dataframes(
         self,

@@ -10,7 +10,9 @@ import pandas as pd
 import streamlit as st
 
 from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar
+from app.config.settings import MESES, MESES_LABELS
 from app.src.charts.generator import ChartGenerator
+from app.src.ui.editorial import render_dataframe_as_html_table
 
 
 def _render_editorial_panel(kicker, titulo, cuerpo, tone=""):
@@ -108,7 +110,7 @@ def render():
     )
     modo = st.radio(
         "Modo de comparación",
-        ["Años", "Rangos de fechas"],
+        ["Años", "Rangos de fechas", "Personalizado (Flexible)"],
         horizontal=True,
     )
 
@@ -126,7 +128,116 @@ def render():
         _render_comparativo_anual(engine, charts)
         return
 
-    _render_comparativo_rangos(df_filtered, engine, charts)
+    if modo == "Rangos de fechas":
+        _render_comparativo_rangos(df_filtered, engine, charts)
+        return
+
+    _render_comparativo_flexible(df_filtered, engine, charts)
+
+
+def _render_comparativo_flexible(df_filtered, engine, charts):
+    anios = sorted(df_filtered["_anio"].dropna().unique().astype(int).tolist())
+    meses_labels = [MESES_LABELS[m] for m in MESES]
+    meses_reverse = {v: k for k, v in MESES_LABELS.items()}
+    
+    _render_section_heading(
+        3,
+        "Análisis Flexible",
+        "Contraste Personalizado",
+        "Seleccione años y meses específicos para construir dos periodos a medida y compararlos.",
+    )
+    
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.markdown("#### 📅 Periodo A (Base)")
+        anios_a = st.multiselect("Años A", anios, default=[anios[0]] if anios else [], key="flex_anios_a")
+        meses_a_label = st.multiselect("Meses A", meses_labels, default=[], placeholder="Todos los meses", key="flex_meses_a")
+        meses_a = [meses_reverse[m] for m in meses_a_label] if meses_a_label else None
+        engine_a = engine.filtrar(anio=anios_a, mes=meses_a)
+        
+    with col_b:
+        st.markdown("#### 📅 Periodo B (Contraste)")
+        anios_b = st.multiselect("Años B", anios, default=[anios[-1]] if anios else [], key="flex_anios_b")
+        meses_b_label = st.multiselect("Meses B", meses_labels, default=[], placeholder="Todos los meses", key="flex_meses_b")
+        meses_b = [meses_reverse[m] for m in meses_b_label] if meses_b_label else None
+        engine_b = engine.filtrar(anio=anios_b, mes=meses_b)
+
+    # Generación de etiquetas para los periodos
+    label_a = f"A ({len(anios_a)} años)" if not meses_a_label else f"A ({', '.join(meses_a_label)})"
+    label_b = f"B ({len(anios_b)} años)" if not meses_b_label else f"B ({', '.join(meses_b_label)})"
+    
+    st.divider()
+    
+    total_a = engine_a.total_registros
+    total_b = engine_b.total_registros
+    diferencia = total_b - total_a
+    pct_var = round((diferencia / total_a * 100), 2) if total_a > 0 else (100.0 if total_b > 0 else 0.0)
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Total Periodo A", f"{total_a:,}")
+    c2.metric("Total Periodo B", f"{total_b:,}")
+    c3.metric("Diferencia", f"{diferencia:+,}", delta=f"{pct_var:+.1f}%")
+    c4.metric(
+        "Tendencia", 
+        "📈 Aumento" if diferencia > 0 else ("📉 Baja" if diferencia < 0 else "➡️ Estable"),
+    )
+
+    st.divider()
+    
+    _open_scene_stage(
+        4,
+        "Escena analítica",
+        "Exploración flexible",
+        "Comparativa detallada basada en las selecciones personalizadas anteriores.",
+        stage_class="analysis-stage",
+    )
+    
+    tab_delitos, tab_modalidades, tab_tabla = st.tabs([
+        "📋 Comparativo por Delito",
+        "🧩 Modalidades Reales",
+        "📊 Tabla Detallada",
+    ])
+    
+    with tab_delitos:
+        st.markdown(f"### Comparativo por Delito: {label_a} vs {label_b}")
+        df_comp_del = engine.comparativo_personalizado(engine_a, engine_b, "DELITO")
+        cobertura_delitos = engine.cobertura_personalizado(engine_a, engine_b, "DELITO")
+        _render_advertencia_cobertura(cobertura_delitos, label_a, label_b, "delito")
+        df_chart = df_comp_del[df_comp_del["categoria"] != "TOTAL"]
+        if not df_chart.empty:
+            fig = charts.barras_comparativo(
+                df_chart, 
+                f"Delitos — {label_a} vs {label_b}", 
+                col_cat="categoria_label", 
+                label_y1=label_a, 
+                label_y2=label_b
+            )
+            st.plotly_chart(fig, width="stretch")
+        _tabla_comparativa(df_comp_del, "categoria_label", label_a, label_b)
+
+    with tab_modalidades:
+        st.markdown(f"### Modalidades Reales: {label_a} vs {label_b}")
+        df_comp_mod = engine.comparativo_modalidades_personalizado(engine_a, engine_b)
+        _render_advertencia_cobertura(engine.cobertura_personalizado(engine_a, engine_b, "DELITO"), label_a, label_b, "modalidad")
+        df_chart_mod = df_comp_mod[df_comp_mod["categoria_label"] != "TOTAL"].head(15)
+        if not df_chart_mod.empty:
+            fig = charts.barras_comparativo(
+                df_chart_mod, 
+                f"Modalidades — {label_a} vs {label_b}", 
+                col_cat="categoria_label", 
+                label_y1=label_a, 
+                label_y2=label_b
+            )
+            st.plotly_chart(fig, width="stretch")
+        _tabla_comparativa(df_comp_mod, "categoria_label", label_a, label_b)
+
+    with tab_tabla:
+        st.markdown(f"### Detalle Consolidado: {label_a} vs {label_b}")
+        dimension = st.selectbox("Dimensión de análisis", ["DELITO", "DIA_HECHO", "FRAN_HORAR", "LUGR_HECHO"], key="flex_dimension")
+        df_comp = engine.comparativo_personalizado(engine_a, engine_b, dimension)
+        _tabla_comparativa(df_comp, "categoria_label" if "categoria_label" in df_comp.columns else "categoria", label_a, label_b)
+
+    _close_scene_stage()
 
 
 def _granularidades_temporales():
@@ -843,15 +954,18 @@ def _tabla_comparativa(df, col_label, label_anterior, label_actual):
         if c in display.columns
     ]
 
-    st.dataframe(
-        display[cols_to_show],
-        hide_index=True,
-        width="stretch",
-        column_config={
-            "Dif.": st.column_config.NumberColumn(format="%+d"),
-            "% Var.": st.column_config.NumberColumn(format="%+.1f%%"),
-        },
-    )
+    display = display[cols_to_show].copy()
+    
+    if label_anterior in display.columns:
+        display[label_anterior] = display[label_anterior].fillna(0).astype(int).apply(lambda x: f"{x:,}")
+    if label_actual in display.columns:
+        display[label_actual] = display[label_actual].fillna(0).astype(int).apply(lambda x: f"{x:,}")
+    if "Dif." in display.columns:
+        display["Dif."] = display["Dif."].fillna(0).astype(int).apply(lambda x: f"{x:+,}")
+    if "% Var." in display.columns:
+        display["% Var."] = display["% Var."].fillna(0).astype(float).apply(lambda x: f"{x:+.1f}%")
+
+    render_dataframe_as_html_table(display, height=450)
 
 
 def _tabla_evolucion_diaria(df, label_anterior, label_actual):
@@ -865,23 +979,23 @@ def _tabla_evolucion_diaria(df, label_anterior, label_actual):
         "pct_variacion": "% Var.",
     })
 
-    st.dataframe(
-        display[[
-            "Tramo",
-            f"Fecha {label_anterior}",
-            f"Fecha {label_actual}",
-            label_anterior,
-            label_actual,
-            "Dif.",
-            "% Var.",
-        ]],
-        hide_index=True,
-        width="stretch",
-        column_config={
-            "Dif.": st.column_config.NumberColumn(format="%+d"),
-            "% Var.": st.column_config.NumberColumn(format="%+.1f%%"),
-        },
-    )
+    cols = [
+        "Tramo",
+        f"Fecha {label_anterior}",
+        f"Fecha {label_actual}",
+        label_anterior,
+        label_actual,
+        "Dif.",
+        "% Var.",
+    ]
+    display = display[cols].copy()
+    
+    display[label_anterior] = display[label_anterior].fillna(0).astype(int).apply(lambda x: f"{x:,}")
+    display[label_actual] = display[label_actual].fillna(0).astype(int).apply(lambda x: f"{x:,}")
+    display["Dif."] = display["Dif."].fillna(0).astype(int).apply(lambda x: f"{x:+,}")
+    display["% Var."] = display["% Var."].fillna(0).astype(float).apply(lambda x: f"{x:+.1f}%")
+
+    render_dataframe_as_html_table(display, height=450)
 
 
 def _rangos_por_defecto(fecha_min, fecha_max):

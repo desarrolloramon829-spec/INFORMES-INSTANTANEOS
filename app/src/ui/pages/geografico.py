@@ -6,7 +6,7 @@ import streamlit as st
 from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar, mostrar_metricas_header
 from app.src.charts.generator import ChartGenerator
 from app.config.settings import UNIDADES_REGIONALES
-from app.src.ui.editorial import close_stage, open_stage, render_hero, render_panel, render_section_heading
+from app.src.ui.editorial import close_stage, open_stage, render_hero, render_panel, render_section_heading, render_dataframe_as_html_table
 
 def _dataframe_height(row_count: int, base: int = 38, header: int = 38, padding: int = 6, maximum: int = 600) -> int:
     """Calcula una altura ajustada al contenido para evitar filas vacías."""
@@ -83,9 +83,9 @@ def render():
             st.markdown("#### Detalle ejecutivo")
             display = df_ur[["categoria", "categoria_label", "cantidad", "porcentaje"]].copy()
             display.columns = ["Código", "Unidad Regional", "Cantidad", "%"]
-            display["Cantidad"] = display["Cantidad"].astype(int)
+            display["Cantidad"] = display["Cantidad"].astype(int).apply(lambda x: f"{x:,}")
             display["%"] = display["%"].apply(lambda x: f"{x:.1f}%")
-            st.dataframe(display, hide_index=True, width="stretch")
+            render_dataframe_as_html_table(display)
 
     # ---- Jurisdicción ----
     with tab_juris:
@@ -121,10 +121,9 @@ def render():
 
             display = df_juris_all[["categoria_label", "cantidad", "porcentaje"]].copy()
             display.columns = ["Jurisdicción", "Cantidad", "%"]
-            display["Cantidad"] = display["Cantidad"].astype(int)
+            display["Cantidad"] = display["Cantidad"].astype(int).apply(lambda x: f"{x:,}")
             display["%"] = display["%"].apply(lambda x: f"{x:.1f}%")
-            st.dataframe(display, hide_index=True, width="stretch",
-                          height=min(len(display) * 35 + 50, 600))
+            render_dataframe_as_html_table(display, height=min(len(display) * 35 + 50, 600))
 
     close_stage()
 
@@ -175,12 +174,7 @@ def render():
 
             display_geo = pivot_geo.copy()
             display_geo.insert(0, "Unidad Regional", display_geo.index)
-            st.dataframe(
-                display_geo,
-                hide_index=True,
-                width="stretch",
-                height=_dataframe_height(len(display_geo), base=35, header=40, padding=8, maximum=420),
-            )
+            render_dataframe_as_html_table(display_geo, height=_dataframe_height(len(display_geo), base=35, header=40, padding=8, maximum=420))
 
     close_stage()
 

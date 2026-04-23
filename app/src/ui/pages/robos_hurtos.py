@@ -198,36 +198,35 @@ def _generar_tabla_html(df: pd.DataFrame, titulo_ur: str) -> str:
     total_total = int(df["TOTAL"].sum())
 
     rows_html = ""
-    for i, (_, row) in enumerate(df.iterrows()):
-        bg = "#161b27" if i % 2 == 0 else "#1e2535"
+    for _, row in df.iterrows():
         rows_html += (
-            f'<tr style="background-color:{bg};">'
-            f'<td style="padding:10px 14px;text-align:center;font-weight:bold;color:#e8e8e8;border-bottom:1px solid #2a2a3e;">{row["COMISARIAS"]}</td>'
-            f'<td style="padding:10px 14px;text-align:center;color:#e8e8e8;border-bottom:1px solid #2a2a3e;">{int(row["ROBOS"])}</td>'
-            f'<td style="padding:10px 14px;text-align:center;color:#e8e8e8;border-bottom:1px solid #2a2a3e;">{int(row["HURTOS"])}</td>'
-            f'<td style="padding:10px 14px;text-align:center;font-weight:bold;color:#e8e8e8;border-bottom:1px solid #2a2a3e;">{int(row["TOTAL"])}</td>'
+            f'<tr>'
+            f'<td style="text-align:left;font-weight:bold;">{row["COMISARIAS"]}</td>'
+            f'<td style="text-align:center;">{int(row["ROBOS"])}</td>'
+            f'<td style="text-align:center;">{int(row["HURTOS"])}</td>'
+            f'<td style="text-align:center;font-weight:bold;">{int(row["TOTAL"])}</td>'
             f'</tr>'
         )
 
     # Fila TOTAL
     rows_html += (
-        '<tr style="background-color:#FFFF00 !important;">'
-        '<td style="padding:10px 14px;text-align:center;font-weight:bold;color:#0e1117 !important;border-top:2px solid #CC0000;">TOTAL</td>'
-        f'<td style="padding:10px 14px;text-align:center;font-weight:bold;color:#0e1117 !important;border-top:2px solid #CC0000;">{total_robos}</td>'
-        f'<td style="padding:10px 14px;text-align:center;font-weight:bold;color:#0e1117 !important;border-top:2px solid #CC0000;">{total_hurtos}</td>'
-        f'<td style="padding:10px 14px;text-align:center;font-weight:bold;color:#0e1117 !important;border-top:2px solid #CC0000;">{total_total}</td>'
+        '<tr class="total-row">'
+        '<td style="text-align:left;font-weight:bold;">TOTAL</td>'
+        f'<td style="text-align:center;font-weight:bold;">{total_robos}</td>'
+        f'<td style="text-align:center;font-weight:bold;">{total_hurtos}</td>'
+        f'<td style="text-align:center;font-weight:bold;">{total_total}</td>'
         '</tr>'
     )
 
     html = (
-        f'<div style="margin-bottom:0;font-family:Segoe UI,Arial,sans-serif;background-color:#0e1117;">'
-        f'<div style="text-align:center;color:#ffffff;background-color:#1E3A5F;padding:14px 20px;border-radius:8px 8px 0 0;font-size:1.5rem;font-weight:bold;letter-spacing:1px;">{titulo_ur}</div>'
-        f'<table style="width:100%;border-collapse:collapse;font-size:0.9rem;background-color:#0e1117;border-radius:0 0 6px 6px;overflow:hidden;">'
-        f'<thead><tr style="background-color:#2a4a7f;">'
-        f'<th style="padding:10px 14px;text-align:center;color:#ffffff;min-width:180px;">COMISARIAS</th>'
-        f'<th style="padding:10px 14px;text-align:center;color:#ffffff;">ROBOS</th>'
-        f'<th style="padding:10px 14px;text-align:center;color:#ffffff;">HURTOS</th>'
-        f'<th style="padding:10px 14px;text-align:center;color:#ffffff;">TOTAL</th>'
+        f'<div style="margin-bottom:20px;font-family:var(--font-ui);background-color:var(--app-surface); border: 1px solid var(--app-border); border-radius: 8px;">'
+        f'<div style="text-align:center;color:#ffffff;background-color:#000000;padding:14px 20px;border-radius:8px 8px 0 0;font-size:1.5rem;font-weight:bold;letter-spacing:1px;">{titulo_ur}</div>'
+        f'<table class="styled-table" style="margin: 0; border-radius: 0 0 8px 8px; border: none;">'
+        f'<thead><tr>'
+        f'<th style="text-align:left;min-width:180px;">COMISARIAS</th>'
+        f'<th style="text-align:center;">ROBOS</th>'
+        f'<th style="text-align:center;">HURTOS</th>'
+        f'<th style="text-align:center;">TOTAL</th>'
         f'</tr></thead>'
         f'<tbody>{rows_html}</tbody>'
         f'</table></div>'

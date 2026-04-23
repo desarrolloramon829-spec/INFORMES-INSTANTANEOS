@@ -5,7 +5,7 @@ Informe 6.1 — Tabla y gráficos de delitos clasificados por tipo.
 import streamlit as st
 from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar, mostrar_metricas_header
 from app.src.charts.generator import ChartGenerator
-from app.src.ui.editorial import close_stage, open_stage, render_hero, render_panel, render_section_heading
+from app.src.ui.editorial import close_stage, open_stage, render_hero, render_panel, render_section_heading, render_dataframe_as_html_table
 
 
 def render():
@@ -154,12 +154,10 @@ def render():
                 st.markdown("#### Tabla completa de modalidades operativas")
                 display_detalle = df_modalidades_operativas_full[["categoria_label", "cantidad", "porcentaje"]].copy()
                 display_detalle.columns = ["Modalidad operativa", "Cantidad", "%"]
-                display_detalle["Cantidad"] = display_detalle["Cantidad"].astype(int)
+                display_detalle["Cantidad"] = display_detalle["Cantidad"].astype(int).apply(lambda x: f"{x:,}")
                 display_detalle["%"] = display_detalle["%"].apply(lambda x: f"{x:.1f}%")
-                st.dataframe(
+                render_dataframe_as_html_table(
                     display_detalle,
-                    hide_index=True,
-                    width="stretch",
                     height=max(len(display_detalle) * 35 + 40, 420),
                 )
             else:
@@ -305,7 +303,7 @@ def _generar_tabla_html(df) -> str:
         rows += f"""
         <tr>
             <td style="text-align:left; font-weight:500;">{delito}</td>
-            <td style="text-align:left; color:#a0c4ff;">{modus}</td>
+            <td style="text-align:left; color:var(--app-primary);">{modus}</td>
             <td>{int(row['cantidad']):,}</td>
             <td>{row['porcentaje']:.1f}%</td>
         </tr>"""

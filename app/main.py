@@ -397,15 +397,22 @@ def inject_visual_system(theme_key: str):
     }}
 
     .styled-table thead tr {{
-        background: var(--app-accent);
+        background: #000000;
         color: #ffffff;
     }}
 
     .styled-table th, .styled-table td {{
         padding: 10px 14px;
         text-align: center;
-        color: var(--app-text);
         border-bottom: 1px solid var(--app-border);
+    }}
+
+    .styled-table th {{
+        color: #ffffff;
+    }}
+
+    .styled-table td {{
+        color: var(--app-text);
     }}
 
     .styled-table tbody tr:nth-of-type(odd) {{

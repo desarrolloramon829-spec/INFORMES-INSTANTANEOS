@@ -5,7 +5,7 @@ Informes 6.4 (Movilidad), 6.5 (Armas), 6.6 (Ámbito), 6.10 (Modus operandi), 6.1
 import streamlit as st
 from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar, mostrar_metricas_header
 from app.src.charts.generator import ChartGenerator
-from app.src.ui.editorial import close_stage, open_stage, render_hero, render_panel, render_section_heading
+from app.src.ui.editorial import close_stage, open_stage, render_hero, render_panel, render_section_heading, render_dataframe_as_html_table
 
 
 def render():
@@ -182,6 +182,6 @@ def _mostrar_tabla(df):
     """Muestra tabla compacta en streamlit."""
     display = df[["categoria_label", "cantidad", "porcentaje"]].copy()
     display.columns = ["Categoría", "Cantidad", "%"]
-    display["Cantidad"] = display["Cantidad"].astype(int)
+    display["Cantidad"] = display["Cantidad"].astype(int).apply(lambda x: f"{x:,}")
     display["%"] = display["%"].apply(lambda x: f"{x:.1f}%")
-    st.dataframe(display, hide_index=True, width="stretch")
+    render_dataframe_as_html_table(display)

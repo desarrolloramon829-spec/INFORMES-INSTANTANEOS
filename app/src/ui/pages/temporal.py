@@ -5,7 +5,7 @@ Informes 6.2 (Día semana), 6.3 (Franja horaria), 6.7 (Mes).
 import streamlit as st
 
 from app.src.charts.generator import ChartGenerator
-from app.src.ui.editorial import close_stage, open_stage, render_hero, render_panel, render_section_heading
+from app.src.ui.editorial import close_stage, open_stage, render_hero, render_panel, render_section_heading, render_dataframe_as_html_table
 from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar, mostrar_metricas_header
 
 
@@ -59,9 +59,9 @@ def _tabla_simple(df, col1_name, col2_name, col3_name):
     """Tabla compacta con st.dataframe."""
     display = df[["categoria_label", "cantidad", "porcentaje"]].copy()
     display.columns = [col1_name, col2_name, col3_name]
-    display[col2_name] = display[col2_name].astype(int)
+    display[col2_name] = display[col2_name].astype(int).apply(lambda x: f"{x:,}")
     display[col3_name] = display[col3_name].apply(lambda x: f"{x:.1f}%")
-    st.dataframe(display, hide_index=True, width="stretch")
+    render_dataframe_as_html_table(display)
 
 
 def render():
@@ -248,15 +248,14 @@ def render():
             )
             st.plotly_chart(fig, width="stretch")
 
-            st.dataframe(
-                df_anio.rename(columns={
-                    "categoria": "Año",
-                    "cantidad": "Cantidad",
-                    "porcentaje": "%",
-                }),
-                hide_index=True,
-                width="stretch",
-            )
+            display = df_anio.rename(columns={
+                "categoria": "Año",
+                "cantidad": "Cantidad",
+                "porcentaje": "%",
+            }).copy()
+            display["Cantidad"] = display["Cantidad"].astype(int).apply(lambda x: f"{x:,}")
+            display["%"] = display["%"].apply(lambda x: f"{x:.1f}%")
+            render_dataframe_as_html_table(display)
 
     close_stage()
 
@@ -299,12 +298,7 @@ def render():
 
             display_heatmap = pivot_dia_franja.copy()
             display_heatmap.insert(0, "Día", display_heatmap.index)
-            st.dataframe(
-                display_heatmap,
-                hide_index=True,
-                width="stretch",
-                height=_dataframe_height(len(display_heatmap)),
-            )
+            render_dataframe_as_html_table(display_heatmap, height=_dataframe_height(len(display_heatmap)))
 
     close_stage()
 
