@@ -575,6 +575,54 @@ class ChartGenerator:
         )
         return fig
 
+    @staticmethod
+    def linea_evolucion(
+        df: pd.DataFrame,
+        titulo: str = "",
+        col_x: str = "periodo_label",
+        col_y: str = "cantidad",
+        color: str | None = None,
+        height: int = 450,
+        mostrar_texto: bool = True,
+        xaxis_title: str = "Periodo",
+    ) -> go.Figure:
+        """Gráfico de línea simple para evolución temporal (un solo periodo)."""
+        theme = _get_active_theme()
+        df_plot = df[df[col_x] != "TOTAL"].copy()
+        point_count = len(df_plot)
+        
+        if color is None:
+            color = theme["primary"]
+            
+        fig = go.Figure()
+        
+        fig.add_trace(go.Scatter(
+            x=df_plot[col_x],
+            y=df_plot[col_y],
+            mode="lines+markers+text" if mostrar_texto else "lines+markers",
+            line=dict(color=color, width=3, shape="spline", smoothing=0.55),
+            marker=dict(size=10, color=color, line=dict(width=2, color=theme["surface"])),
+            text=df_plot[col_y].apply(lambda x: f"{int(x):,}") if mostrar_texto else None,
+            textposition="top center",
+            textfont=dict(size=11, color=theme["text"]),
+            hovertemplate="<b>%{x}</b><br>Cantidad: %{y:,}<extra></extra>",
+        ))
+
+        fig.update_layout(
+            xaxis_title=xaxis_title,
+            yaxis_title="Cantidad de Delitos",
+            hovermode="x unified",
+        )
+
+        _apply_axis_density(fig, df_plot[col_x].tolist(), axis="x")
+        fig.update_yaxes(rangemode="tozero")
+        
+        fig = _apply_base_layout(fig, titulo, height)
+        fig.update_layout(
+            margin=dict(l=60, r=30, t=78, b=110 if point_count > 10 else 70),
+        )
+        return fig
+
     # ---- Barras agrupadas comparativas ----
 
     @staticmethod

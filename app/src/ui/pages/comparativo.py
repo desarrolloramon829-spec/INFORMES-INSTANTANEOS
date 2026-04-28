@@ -109,8 +109,8 @@ def render():
         "Primero se define el tipo de contraste para ordenar la lectura y las métricas de apertura.",
     )
     modo = st.radio(
-        "Modo de comparación",
-        ["Años", "Rangos de fechas", "Personalizado (Flexible)"],
+        "Modo de análisis",
+        ["Años", "Rangos de fechas", "Personalizado (Flexible)", "Periodo Individual"],
         horizontal=True,
     )
 
@@ -132,7 +132,11 @@ def render():
         _render_comparativo_rangos(df_filtered, engine, charts)
         return
 
-    _render_comparativo_flexible(df_filtered, engine, charts)
+    if modo == "Personalizado (Flexible)":
+        _render_comparativo_flexible(df_filtered, engine, charts)
+        return
+
+    _render_periodo_individual(df_filtered, engine, charts)
 
 
 def _render_comparativo_flexible(df_filtered, engine, charts):
@@ -931,6 +935,168 @@ def _render_comparativo_rangos(df_filtered, engine, charts):
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
     _close_scene_stage()
+
+
+def _render_periodo_individual(df_filtered, engine, charts):
+    _render_section_heading(
+        3,
+        "Análisis Individual",
+        "Visualización de un solo periodo",
+        "Seleccione un año o un rango de fechas para ver el detalle de los hechos sin contraste.",
+    )
+
+    tipo_periodo = st.radio("Definir periodo por", ["Año", "Rango de fechas"], horizontal=True)
+
+    if tipo_periodo == "Año":
+        anios = sorted(df_filtered["_anio"].dropna().unique().astype(int).tolist())
+        if not anios:
+            st.warning("No hay años disponibles.")
+            return
+        anio_sel = st.selectbox("📅 Seleccione el año", anios, index=len(anios)-1)
+        engine_periodo = engine.filtrar(anio=anio_sel)
+        label_periodo = str(anio_sel)
+    else:
+        fechas = df_filtered["_fecha"].dropna() if "_fecha" in df_filtered.columns else []
+        if len(fechas) == 0:
+            st.warning("No hay fechas válidas.")
+            return
+        fecha_min, fecha_max = fechas.min(), fechas.max()
+        col1, col2 = st.columns(2)
+        with col1:
+            desde = st.date_input("Desde", value=fecha_min, min_value=fecha_min, max_value=fecha_max, key="indiv_desde")
+        with col2:
+            hasta = st.date_input("Hasta", value=fecha_max, min_value=fecha_min, max_value=fecha_max, key="indiv_hasta")
+        
+        if desde > hasta:
+            st.error("Fecha 'Desde' no puede ser mayor que 'Hasta'.")
+            return
+        engine_periodo = engine.filtrar(fecha_desde=desde, fecha_hasta=hasta)
+        label_periodo = _formatear_periodo(desde, hasta)
+
+    st.divider()
+    
+    total = engine_periodo.total_registros
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Total Hechos", f"{total:,}")
+    c2.metric("Periodo", label_periodo)
+    
+    _open_scene_stage(
+        4,
+        "Detalle operativo",
+        f"Análisis de: {label_periodo}",
+        "Exploración de la distribución temporal, delictual y territorial del periodo seleccionado.",
+        stage_class="analysis-stage",
+    )
+
+    tabs = st.tabs([
+        "📅 Temporal", 
+        "📋 Por Delito", 
+        "🧩 Modalidades", 
+        "🏛️ Por Comisaría",
+        "📊 Tabla Detallada"
+    ])
+
+    with tabs[0]:
+        st.markdown(f"### Evolución Temporal: {label_periodo}")
+        granularidades = _granularidades_temporales()
+        granularidad_label = st.selectbox("Agrupar por", list(granularidades.keys()), index=4, key="indiv_temporal_gran")
+        granularidad = granularidades[granularidad_label]
+        
+        df_temp = engine_periodo.delitos_por_semana(granularidad)
+        if not df_temp.empty:
+            df_temp_view = _filtrar_subserie_temporal_indiv(df_temp, granularidad, "indiv_temp")
+            
+            # Gráfico de líneas (Evolución solicitada)
+            fig_line = charts.linea_evolucion(
+                df_temp_view,
+                f"Evolución por {granularidad_label} — {label_periodo}",
+                col_x="categoria_label",
+                height=480
+            )
+            st.plotly_chart(fig_line, width="stretch")
+            
+            # Gráfico de barras (Distribución)
+            fig_bar = charts.barras_vertical(
+                df_temp_view[df_temp_view["categoria_label"] != "TOTAL"],
+                f"Distribución por {granularidad_label}",
+                col_cat="categoria_label",
+                height=400
+            )
+            st.plotly_chart(fig_bar, width="stretch")
+            
+            _tabla_individual(df_temp_view, granularidad_label, "Hechos", "%")
+
+    with tabs[1]:
+        st.markdown(f"### Distribución por Delito: {label_periodo}")
+        df_del = engine_periodo.delitos_por_modalidad()
+        if not df_del.empty:
+            fig = charts.barras_horizontal(df_del, f"Delitos en {label_periodo}")
+            st.plotly_chart(fig, width="stretch")
+            _tabla_individual(df_del, "Delito", "Hechos", "%")
+
+    with tabs[2]:
+        st.markdown(f"### Modalidades Operativas: {label_periodo}")
+        df_mod = engine_periodo.modalidades_operativas(top_n=20)
+        if not df_mod.empty:
+            fig = charts.barras_horizontal(df_mod, f"Top 20 Modalidades en {label_periodo}")
+            st.plotly_chart(fig, width="stretch")
+            _tabla_individual(df_mod, "Modalidad", "Hechos", "%")
+
+    with tabs[3]:
+        st.markdown(f"### Ranking por Comisaría: {label_periodo}")
+        df_com = engine_periodo.delitos_por_jurisdiccion(top_n=20)
+        if not df_com.empty:
+            fig = charts.barras_horizontal(df_com, f"Top 20 Comisarías en {label_periodo}")
+            st.plotly_chart(fig, width="stretch")
+            _tabla_individual(df_com, "Jurisdicción", "Hechos", "%")
+
+    with tabs[4]:
+        st.markdown(f"### Resumen Consolidado: {label_periodo}")
+        dimension = st.selectbox("Dimensión de análisis", ["DELITO", "DIA_HECHO", "FRAN_HORAR", "LUGR_HECHO"], key="indiv_dimension")
+        if dimension == "DELITO":
+            df_det = engine_periodo.delitos_por_modalidad()
+        elif dimension == "DIA_HECHO":
+            df_det = engine_periodo.delitos_por_dia_semana()
+        elif dimension == "FRAN_HORAR":
+            df_det = engine_periodo.delitos_por_franja_horaria()
+        else:
+            df_det = engine_periodo.ambito_ocurrencia()
+        
+        _tabla_individual(df_det, dimension.replace("_", " ").title(), "Hechos", "%")
+
+    _close_scene_stage()
+
+
+def _filtrar_subserie_temporal_indiv(df, granularidad, key_prefix):
+    detalle = df[df["categoria_label"] != "TOTAL"].copy()
+    if granularidad not in {"semanas", "bisemanas", "trisemanas", "dias"} or len(detalle) <= 16:
+        return df
+
+    inicio, fin = st.slider(
+        f"Ver tramo",
+        min_value=1,
+        max_value=len(detalle),
+        value=(1, min(16, len(detalle))),
+        key=f"{key_prefix}_slider",
+    )
+    return pd.concat([detalle.iloc[inicio - 1:fin], df[df["categoria_label"] == "TOTAL"]], ignore_index=True)
+
+
+def _tabla_individual(df, col_label, col_val, col_pct):
+    display = df.copy()
+    if "categoria_label" in display.columns:
+        display = display.rename(columns={"categoria_label": col_label})
+    
+    display = display.rename(columns={"cantidad": col_val, "porcentaje": col_pct})
+    cols = [col_label, col_val, col_pct]
+    display = display[[c for c in cols if c in display.columns]].copy()
+    
+    if col_val in display.columns:
+        display[col_val] = display[col_val].fillna(0).astype(int).apply(lambda x: f"{x:,}")
+    if col_pct in display.columns:
+        display[col_pct] = display[col_pct].fillna(0).astype(float).apply(lambda x: f"{x:.1f}%")
+
+    render_dataframe_as_html_table(display, height=400)
 
 
 def _tabla_comparativa(df, col_label, label_anterior, label_actual):
