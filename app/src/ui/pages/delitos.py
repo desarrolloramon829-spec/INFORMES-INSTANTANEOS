@@ -106,15 +106,18 @@ def render():
         tab_barras, tab_vertical, tab_dona = st.tabs(["📊 Barras", "📈 Verticales", "🍩 Dona"])
 
         with tab_barras:
-            max_modalidades_barras = max(5, min(len(df_modal), 40))
+            max_modalidades_barras = max(1, min(len(df_modal), 40))
             default_modalidades_barras = min(15, max_modalidades_barras)
-            top_modalidades_barras = st.slider(
-                "Modalidades visibles en barras",
-                min_value=5,
-                max_value=max_modalidades_barras,
-                value=default_modalidades_barras,
-                key="top_modalidades_barras_delitos",
-            )
+            if max_modalidades_barras > 1:
+                top_modalidades_barras = st.slider(
+                    "Modalidades visibles en barras",
+                    min_value=1,
+                    max_value=max_modalidades_barras,
+                    value=default_modalidades_barras,
+                    key="top_modalidades_barras_delitos",
+                )
+            else:
+                top_modalidades_barras = max_modalidades_barras
             df_modal_barras = df_modal.head(top_modalidades_barras).copy()
             fig = charts.barras_horizontal(
                 df_modal_barras,
@@ -127,15 +130,18 @@ def render():
                 )
 
         with tab_vertical:
-            max_modalidades_detalle = max(5, min(len(df_modalidades_operativas_full), 120))
+            max_modalidades_detalle = max(1, min(len(df_modalidades_operativas_full), 120))
             default_modalidades_detalle = min(12, max_modalidades_detalle)
-            top_modalidades_detalle = st.slider(
-                "Modalidades operativas visibles",
-                min_value=5,
-                max_value=max_modalidades_detalle,
-                value=default_modalidades_detalle,
-                key="top_modalidades_detalle_vertical",
-            )
+            if max_modalidades_detalle > 1:
+                top_modalidades_detalle = st.slider(
+                    "Modalidades operativas visibles",
+                    min_value=1,
+                    max_value=max_modalidades_detalle,
+                    value=default_modalidades_detalle,
+                    key="top_modalidades_detalle_vertical",
+                )
+            else:
+                top_modalidades_detalle = max_modalidades_detalle
             df_modal_detalle = df_modalidades_operativas_full.head(top_modalidades_detalle).copy()
             if len(df_modal_detalle) > 0:
                 fig = charts.barras_vertical(

@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Configuración de página (DEBE ser la primera llamada de Streamlit)
 st.set_page_config(
     page_title="Mapa Delictual - Informes",
-    page_icon="🔍",
+    page_icon="app/static/escudo.png",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -571,8 +571,8 @@ def render_sidebar():
     with st.sidebar:
         tema_actual = st.session_state.get("app_theme", "oscuro")
         st.image(
-            "https://img.icons8.com/fluency/96/detective.png",
-            width=64,
+            "app/static/escudo.png",
+            width=220,
         )
         st.title("Mapa Delictual")
         st.caption("Sistema de Informes Estadísticos")
