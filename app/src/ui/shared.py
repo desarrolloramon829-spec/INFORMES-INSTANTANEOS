@@ -325,6 +325,8 @@ def render_filtros_sidebar(
         Conjunto de filtros a omitir.  Claves válidas:
         ``"anio"`` — no muestra ni aplica filtro de Año.
         ``"fecha_rango"`` — no muestra ni aplica Desde / Hasta.
+        ``"delito"`` — no muestra ni aplica filtro de Tipo de Delito.
+        ``"modus"`` — no muestra ni aplica filtro de Modus Operandi.
     """
     _excluir: set[str] = excluir or set()
     df = _ensure_filter_schema(df)
@@ -418,31 +420,38 @@ def render_filtros_sidebar(
             fecha_hasta = None
 
         # ---- Filtro de Delito (multiselect) ----
-        delitos = sorted(df["DELITO"].dropna().unique().tolist())
-        delito_sel = st.multiselect(
-            "Tipo de Delito",
-            options=delitos,
-            default=[],
-            placeholder="Todos",
-            key="filtro_tipo_delito",
-        )
+        if "delito" not in _excluir:
+            delitos = sorted(df["DELITO"].dropna().unique().tolist())
+            delito_sel = st.multiselect(
+                "Tipo de Delito",
+                options=delitos,
+                default=[],
+                placeholder="Todos",
+                key="filtro_tipo_delito",
+            )
+        else:
+            delito_sel = []
 
         # ---- Filtro de Modus Operandi (multiselect) ----
-        modus_set: set[str] = set()
-        for val in df["MODUS_OPER"].dropna().unique():
-            for m in parse_curly_braces(str(val)):
-                clean = m.strip()
-                if clean and clean not in {"#NO_CONSTA", "#OTROS", "zzz", "TEST"}:
-                    modus_set.add(clean)
-        modus_list = sorted(modus_set)
-        modus_labels = {m: m.replace("_", " ").title() for m in modus_list}
-        modus_display = [modus_labels[m] for m in modus_list]
-        modus_sel = st.multiselect(
-            "Modus Operandi",
-            options=modus_display,
-            default=[],
-            placeholder="Todos",
-        )
+        modus_labels = {}
+        if "modus" not in _excluir:
+            modus_set: set[str] = set()
+            for val in df["MODUS_OPER"].dropna().unique():
+                for m in parse_curly_braces(str(val)):
+                    clean = m.strip()
+                    if clean and clean not in {"#NO_CONSTA", "#OTROS", "zzz", "TEST"}:
+                        modus_set.add(clean)
+            modus_list = sorted(modus_set)
+            modus_labels = {m: m.replace("_", " ").title() for m in modus_list}
+            modus_display = [modus_labels[m] for m in modus_list]
+            modus_sel = st.multiselect(
+                "Modus Operandi",
+                options=modus_display,
+                default=[],
+                placeholder="Todos",
+            )
+        else:
+            modus_sel = []
 
     # ================================================================
     # Aplicar filtros
@@ -476,7 +485,7 @@ def render_filtros_sidebar(
     # Aplicar rango de fechas
     if fecha_desde is not None and fecha_hasta is not None and "_fecha" in df_filtered.columns:
         mask_fecha = df_filtered["_fecha"].apply(
-            lambda x: fecha_desde <= x <= fecha_hasta if x is not None else False
+            lambda x: fecha_desde <= x <= fecha_hasta if pd.notna(x) else False
         )
         df_filtered = df_filtered[mask_fecha]
 
@@ -496,6 +505,37 @@ def render_filtros_sidebar(
             )
             df_filtered = df_filtered[mask]
 
+    # Mostrar denuncias si se filtró por delito o modus operandi
+    if delito_sel or modus_sel:
+        with st.sidebar:
+            st.divider()
+            with st.expander("📄 Denuncias Seleccionadas", expanded=True):
+                st.caption("Detalle de las denuncias para los filtros seleccionados.")
+                cols_to_show = ["FECHA_HECH", "DELITO", "MODUS_OPER", "JURIS_HECH", "RESEN_HECH", "HECH_RESUE"]
+                cols_present = [c for c in cols_to_show if c in df_filtered.columns]
+                
+                if cols_present and not df_filtered.empty:
+                    df_display = df_filtered[cols_present].copy()
+                    
+                    # Renombrar columnas para mejor legibilidad
+                    rename_map = {
+                        "FECHA_HECH": "Fecha",
+                        "DELITO": "Delito",
+                        "MODUS_OPER": "Modus Operandi",
+                        "JURIS_HECH": "Jurisdicción",
+                        "RESEN_HECH": "Reseña",
+                        "HECH_RESUE": "Resuelto"
+                    }
+                    df_display = df_display.rename(columns=rename_map)
+                    
+                    st.dataframe(
+                        df_display,
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                elif df_filtered.empty:
+                    st.info("No hay denuncias que coincidan con los filtros.")
+
     return df_filtered
 
 
@@ -507,3 +547,153 @@ def mostrar_metricas_header(engine: StatsEngine):
     c2.metric("Jurisdicciones", f"{resumen['total_jurisdicciones']:,}")
     c3.metric("Unidades Regionales", f"{resumen['total_unidades_regionales']:,}")
     c4.metric("Shapefiles", f"{resumen['total_shapefiles']:,}")
+
+
+def render_barras_con_toggle(
+    charts,
+    df: pd.DataFrame,
+    titulo: str,
+    key: str,
+    color: str = "#2563EB",
+    col_cat: str = "categoria_label",
+    col_val: str = "cantidad",
+    col_pct: str = "porcentaje",
+):
+    """
+    Renderiza un gráfico de barras con un toggle para alternar entre
+    orientación horizontal y vertical.
+
+    Parameters
+    ----------
+    charts : ChartGenerator
+        Instancia del generador de gráficos.
+    df : pd.DataFrame
+        DataFrame con los datos a graficar.
+    titulo : str
+        Título del gráfico.
+    key : str
+        Clave única de Streamlit para el toggle (debe ser diferente en cada uso).
+    color : str
+        Color base de las barras.
+    col_cat, col_val, col_pct : str
+        Nombres de las columnas de categoría, valor y porcentaje.
+    """
+    orientacion = st.radio(
+        "Orientación del gráfico",
+        ["Horizontal", "Vertical"],
+        index=0,
+        horizontal=True,
+        key=f"toggle_orient_{key}",
+        label_visibility="collapsed",
+    )
+
+    if orientacion == "Horizontal":
+        fig = charts.barras_horizontal(
+            df, titulo, color=color,
+            col_cat=col_cat, col_val=col_val, col_pct=col_pct,
+        )
+    else:
+        fig = charts.barras_vertical(
+            df, titulo, color=color,
+            col_cat=col_cat, col_val=col_val, col_pct=col_pct,
+            highlight_max=True,
+        )
+    st.plotly_chart(fig, width="stretch")
+
+
+def render_barras_comparativo_con_toggle(
+    charts,
+    df: pd.DataFrame,
+    titulo: str,
+    key: str,
+    col_cat: str = "categoria",
+    col_y1: str = "cantidad_anterior",
+    col_y2: str = "cantidad_actual",
+    label_y1: str = "Serie 1",
+    label_y2: str = "Serie 2",
+    height: int | None = None,
+):
+    """
+    Renderiza un gráfico de barras comparativo (dos series) con un toggle
+    para alternar entre orientación horizontal y vertical.
+    """
+    orientacion = st.radio(
+        "Orientación del gráfico",
+        ["Horizontal", "Vertical"],
+        index=0,
+        horizontal=True,
+        key=f"toggle_orient_{key}",
+        label_visibility="collapsed",
+    )
+
+    if orientacion == "Horizontal":
+        fig = charts.barras_horizontal_comparativo(
+            df, titulo,
+            col_cat=col_cat, col_y1=col_y1, col_y2=col_y2,
+            label_y1=label_y1, label_y2=label_y2,
+            height=height,
+        )
+    else:
+        fig = charts.barras_comparativo(
+            df, titulo,
+            col_cat=col_cat, col_y1=col_y1, col_y2=col_y2,
+            label_y1=label_y1, label_y2=label_y2,
+            height=height or 500,
+        )
+    st.plotly_chart(fig, width="stretch")
+
+
+def render_boton_exportar(pagina: str, engine):
+    """
+    Renderiza un botón de exportación a Word con los gráficos de la página actual.
+
+    Parameters
+    ----------
+    pagina : str
+        Nombre de la página activa (ej: "🏠 Inicio").
+    engine : StatsEngine
+        Motor de estadísticas con los datos filtrados vigentes.
+    """
+    from datetime import datetime
+
+    st.divider()
+    st.markdown("### 📄 Exportar Informe")
+    st.caption("Genera un documento Word (.docx) editable con los gráficos y métricas de esta página.")
+
+    col_btn, col_info = st.columns([1, 2])
+    with col_btn:
+        generar = st.button(
+            "📥 Generar Informe Word",
+            key=f"btn_export_{pagina}",
+            use_container_width=True,
+        )
+
+    if generar:
+        with st.spinner("Generando documento Word... Esto puede tardar unos segundos."):
+            try:
+                from app.src.export.report_generator import generar_informe_pagina_actual
+                buffer = generar_informe_pagina_actual(pagina, engine)
+                if buffer is None:
+                    st.warning("Esta página aún no tiene generador de informe disponible.")
+                    return
+
+                fecha = datetime.now().strftime("%Y%m%d_%H%M")
+                # Limpiar nombre de página para el archivo
+                nombre_pagina = pagina.replace("🏠 ", "").replace("📋 ", "").replace("📅 ", "").replace("🔍 ", "").replace("🗺️ ", "").replace("📈 ", "").replace("🔫 ", "").replace("🧠 ", "")
+                nombre_pagina = nombre_pagina.replace(" ", "_")
+                filename = f"Informe_{nombre_pagina}_{fecha}.docx"
+
+                st.success("✅ Informe generado exitosamente.")
+                st.download_button(
+                    label="⬇️ Descargar Informe Word",
+                    data=buffer,
+                    file_name=filename,
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    key=f"download_{pagina}_{fecha}",
+                    use_container_width=True,
+                )
+            except ImportError as e:
+                st.error(f"Faltan dependencias para exportar: {e}")
+            except Exception as e:
+                st.error(f"Error al generar el informe: {e}")
+

@@ -18,9 +18,9 @@ from app.src.ui.shared import (
     mostrar_metricas_header,
     _normalize,
     _build_juris_match,
+    render_barras_comparativo_con_toggle,
 )
 from app.config.settings import (
-    COMISARIAS_POR_REGION,
     UNIDADES_REGIONALES,
 )
 from app.src.charts.generator import ChartGenerator
@@ -96,31 +96,37 @@ def _construir_tabla_regional(
     """
     Construye un DataFrame con columnas [COMISARIAS, ROBOS, HURTOS, TOTAL]
     para una Unidad Regional dada.
-    Solo incluye comisarías oficiales definidas en COMISARIAS_POR_REGION.
+    Incluye todas las comisarías de la UR: oficiales y las que existan en datos.
     """
-    # 1) Filtrar registros de esta UR
-    df_ur = df[
-        (df["_unidad_regional"] == ur_code)
-        | (df["JURIS_HECH"].str.startswith(ur_code + "_", na=False))
-    ].copy()
+    # 1) Filtrar registros cuya JURISDICCION pertenece a esta UR
+    #    Usamos JURIS_HECH (jurisdicción real del hecho) como filtro primario
+    #    para evitar contaminar con registros de otras URs que fueron cargados
+    #    desde un shapefile diferente (_unidad_regional).
+    mask_juris = df["JURIS_HECH"].str.startswith(ur_code + "_", na=False)
+    df_ur = df[mask_juris].copy()
+
+    if df_ur.empty:
+        return pd.DataFrame(columns=["COMISARIAS", "ROBOS", "HURTOS", "TOTAL"])
 
     # 2) Clasificar cada registro
     df_ur["_es_robo"] = df_ur["DELITO"].isin(_DELITOS_ROBO)
     df_ur["_es_hurto"] = df_ur["DELITO"].isin(_DELITOS_HURTO)
 
-    # 3) Obtener mapeo display_name → juris_codes
-    _, juris_match_map = _build_juris_match(df, ur_code)
+    # 3) Obtener mapeo display_name → juris_codes (incluye oficiales + fallbacks)
+    all_display_names, juris_match_map = _build_juris_match(df, ur_code)
 
-    # 4) Usar SOLO las comisarías oficiales de COMISARIAS_POR_REGION
-    official_names = COMISARIAS_POR_REGION.get(ur_code, [])
-
-    # 5) Construir filas solo para comisarías oficiales
+    # 4) Construir filas para TODAS las jurisdicciones matcheadas
     filas = []
-    for name in official_names:
+    codes_contados = set()
+    for name in all_display_names:
         codes = juris_match_map.get(name, [])
-        if not codes:
+        # Solo contar códigos que pertenecen a esta UR
+        codes_ur = [c for c in codes if c.startswith(ur_code + "_")]
+        if not codes_ur:
             continue
-        mask = df_ur["JURIS_HECH"].isin(codes)
+        mask = df_ur["JURIS_HECH"].isin(codes_ur)
+        if not mask.any():
+            continue
         robos = int(df_ur.loc[mask, "_es_robo"].sum())
         hurtos = int(df_ur.loc[mask, "_es_hurto"].sum())
         filas.append({
@@ -129,6 +135,21 @@ def _construir_tabla_regional(
             "HURTOS": hurtos,
             "TOTAL": robos + hurtos,
         })
+        codes_contados.update(codes_ur)
+
+    # 5) Capturar registros huérfanos (JURIS_HECH no matcheado por nadie)
+    mask_huerfanos = ~df_ur["JURIS_HECH"].isin(codes_contados)
+    n_huerfanos = int(mask_huerfanos.sum())
+    if n_huerfanos > 0:
+        robos_h = int(df_ur.loc[mask_huerfanos, "_es_robo"].sum())
+        hurtos_h = int(df_ur.loc[mask_huerfanos, "_es_hurto"].sum())
+        if robos_h + hurtos_h > 0:
+            filas.append({
+                "COMISARIAS": "OTRAS DEPENDENCIAS",
+                "ROBOS": robos_h,
+                "HURTOS": hurtos_h,
+                "TOTAL": robos_h + hurtos_h,
+            })
 
     if not filas:
         return pd.DataFrame(columns=["COMISARIAS", "ROBOS", "HURTOS", "TOTAL"])
@@ -289,11 +310,10 @@ def render():
 
     st.divider()
 
-    # Determinar qué URs mostrar según el filtro de UR del sidebar
-    urs_en_datos = set(df_rh["_unidad_regional"].dropna().unique())
+    # Determinar qué URs mostrar según los datos disponibles (por jurisdicción)
     urs_disponibles = []
     for ur_code, _ in _UR_ORDEN:
-        if ur_code in urs_en_datos or df_rh["JURIS_HECH"].str.startswith(ur_code + "_", na=False).any():
+        if df_rh["JURIS_HECH"].str.startswith(ur_code + "_", na=False).any():
             urs_disponibles.append(ur_code)
 
     render_section_heading(
@@ -347,9 +367,11 @@ def render():
 
     with col_chart_right:
         if len(df_chart) > 0:
-            fig = charts.barras_horizontal_comparativo(
+            render_barras_comparativo_con_toggle(
+                charts,
                 df_chart.iloc[::-1],
                 "Comparativo de robos y hurtos por comisaría",
+                key="rh_comparativo",
                 col_cat="categoria_label",
                 col_y1="ROBOS",
                 col_y2="HURTOS",
@@ -357,7 +379,6 @@ def render():
                 label_y2="Hurtos",
                 height=shared_chart_height,
             )
-            st.plotly_chart(fig, width="stretch")
 
             lider = df_chart.iloc[0]
             st.caption(
@@ -380,13 +401,8 @@ def render():
     )
 
     for ur_code, titulo_ur in _UR_ORDEN:
-        if ur_code not in urs_en_datos:
-            # Verificar si hay registros con JURIS_HECH que empiece con este código
-            tiene_juris = df_rh["JURIS_HECH"].str.startswith(
-                ur_code + "_", na=False
-            ).any()
-            if not tiene_juris:
-                continue
+        if not df_rh["JURIS_HECH"].str.startswith(ur_code + "_", na=False).any():
+            continue
 
         tabla = _construir_tabla_regional(df_rh, ur_code)
         if len(tabla) == 0:

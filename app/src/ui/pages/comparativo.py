@@ -9,7 +9,7 @@ from html import escape
 import pandas as pd
 import streamlit as st
 
-from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar
+from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar, render_barras_con_toggle
 from app.config.settings import MESES, MESES_LABELS
 from app.src.charts.generator import ChartGenerator
 from app.src.ui.editorial import render_dataframe_as_html_table
@@ -1030,24 +1030,21 @@ def _render_periodo_individual(df_filtered, engine, charts):
         st.markdown(f"### Distribución por Delito: {label_periodo}")
         df_del = engine_periodo.delitos_por_modalidad()
         if not df_del.empty:
-            fig = charts.barras_horizontal(df_del, f"Delitos en {label_periodo}")
-            st.plotly_chart(fig, width="stretch")
+            render_barras_con_toggle(charts, df_del, f"Delitos en {label_periodo}", key="indiv_delitos")
             _tabla_individual(df_del, "Delito", "Hechos", "%")
 
     with tabs[2]:
         st.markdown(f"### Modalidades Operativas: {label_periodo}")
         df_mod = engine_periodo.modalidades_operativas(top_n=20)
         if not df_mod.empty:
-            fig = charts.barras_horizontal(df_mod, f"Top 20 Modalidades en {label_periodo}")
-            st.plotly_chart(fig, width="stretch")
+            render_barras_con_toggle(charts, df_mod, f"Top 20 Modalidades en {label_periodo}", key="indiv_modal")
             _tabla_individual(df_mod, "Modalidad", "Hechos", "%")
 
     with tabs[3]:
         st.markdown(f"### Ranking por Comisaría: {label_periodo}")
         df_com = engine_periodo.delitos_por_jurisdiccion(top_n=20)
         if not df_com.empty:
-            fig = charts.barras_horizontal(df_com, f"Top 20 Comisarías en {label_periodo}")
-            st.plotly_chart(fig, width="stretch")
+            render_barras_con_toggle(charts, df_com, f"Top 20 Comisarías en {label_periodo}", key="indiv_comis")
             _tabla_individual(df_com, "Jurisdicción", "Hechos", "%")
 
     with tabs[4]:

@@ -3,7 +3,7 @@ Página: Delitos por Modalidad.
 Informe 6.1 — Tabla y gráficos de delitos clasificados por tipo.
 """
 import streamlit as st
-from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar, mostrar_metricas_header
+from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar, mostrar_metricas_header, render_barras_con_toggle, render_boton_exportar
 from app.src.charts.generator import ChartGenerator
 from app.src.ui.editorial import close_stage, open_stage, render_hero, render_panel, render_section_heading, render_dataframe_as_html_table
 
@@ -119,11 +119,11 @@ def render():
             else:
                 top_modalidades_barras = max_modalidades_barras
             df_modal_barras = df_modal.head(top_modalidades_barras).copy()
-            fig = charts.barras_horizontal(
-                df_modal_barras,
+            render_barras_con_toggle(
+                charts, df_modal_barras,
                 "Delitos por Modalidad",
+                key="delitos_modalidad_barras",
             )
-            st.plotly_chart(fig, width="stretch")
             if len(df_modal) > len(df_modal_barras):
                 st.caption(
                     f"Se muestran las {len(df_modal_barras)} modalidades con mayor volumen. El detalle completo sigue disponible en la tabla de la izquierda y en la exportación CSV."
@@ -295,6 +295,9 @@ def render():
             mime="text/csv",
         )
     close_stage()
+
+    # Botón de exportación a Word
+    render_boton_exportar("📋 Delitos por Modalidad", engine)
 
 
 def _generar_tabla_html(df) -> str:

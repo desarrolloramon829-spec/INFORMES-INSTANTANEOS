@@ -6,7 +6,7 @@ import streamlit as st
 
 from app.src.charts.generator import ChartGenerator
 from app.src.ui.editorial import close_stage, open_stage, render_hero, render_panel, render_section_heading, render_dataframe_as_html_table
-from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar, mostrar_metricas_header
+from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar, mostrar_metricas_header, render_boton_exportar
 
 
 def _dataframe_height(row_count: int, base: int = 35, header: int = 40, padding: int = 8, maximum: int = 420) -> int:
@@ -359,3 +359,6 @@ def render():
         st.download_button("⬇️ Día vs franja (CSV)", matriz_csv, "matriz_dia_franja.csv", "text/csv")
 
     close_stage()
+
+    # Botón de exportación a Word
+    render_boton_exportar("📅 Análisis Temporal", engine)

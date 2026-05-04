@@ -79,6 +79,7 @@ def _apply_axis_density(fig: go.Figure, categories: list, axis: str = "x") -> No
             tickvals=categories,
             ticktext=_trim_ticktext(categories, max_chars=18 if count > 18 else 24),
             tickangle=-45 if count > 10 else 0,
+            tickfont=dict(size=22, color="#ffffff" if axis == "x" else None),
             automargin=True,
         )
     else:
@@ -86,6 +87,7 @@ def _apply_axis_density(fig: go.Figure, categories: list, axis: str = "x") -> No
             tickmode="array",
             tickvals=categories,
             ticktext=_trim_ticktext(categories, max_chars=26),
+            tickfont=dict(size=22),
             automargin=True,
         )
 
@@ -189,7 +191,7 @@ def _get_palette(theme: dict) -> list[str]:
 
 def _build_layout_base(theme: dict) -> dict:
     return dict(
-        font=dict(family=TYPOGRAPHY["ui"], size=13, color=theme["text"]),
+        font=dict(family=TYPOGRAPHY["ui"], size=24, color=theme["text"]),
         paper_bgcolor=theme["surface"],
         plot_bgcolor=theme["surface_alt"],
         margin=dict(l=60, r=30, t=68, b=60),
@@ -200,19 +202,19 @@ def _build_layout_base(theme: dict) -> dict:
             y=1.02,
             xanchor="right",
             x=1,
-            font=dict(color=theme["text"]),
+            font=dict(color=theme["text"], size=22),
         ),
         xaxis=dict(
             gridcolor=theme["border"],
             zerolinecolor=theme["border"],
-            tickfont=dict(color=theme["text"]),
-            title_font=dict(color=theme["text"]),
+            tickfont=dict(color=theme["text"], size=22),
+            title_font=dict(color=theme["text"], size=24),
         ),
         yaxis=dict(
             gridcolor=theme["border"],
             zerolinecolor=theme["border"],
-            tickfont=dict(color=theme["text"]),
-            title_font=dict(color=theme["text"]),
+            tickfont=dict(color=theme["text"], size=22),
+            title_font=dict(color=theme["text"], size=24),
         ),
     )
 
@@ -226,7 +228,7 @@ def _apply_base_layout(fig: go.Figure, title: str = "", height: int = 450) -> go
     
     fig.update_layout(
         **_build_layout_base(theme),
-        title=dict(text=title, x=0.5, font=dict(family=TYPOGRAPHY["editorial"], size=18, color=theme["heading"])),
+        title=dict(text=f"<b>{title}</b>", x=0.5, font=dict(family=TYPOGRAPHY["editorial"], size=34, color=theme["heading"])),
         height=height,
         bargap=0.22,
         bargroupgap=0.08,
@@ -274,7 +276,7 @@ class ChartGenerator:
         df_plot = df.copy()
         if col_cat in df_plot.columns:
             df_plot = df_plot.sort_values(col_val, ascending=True)
-        height = _adaptive_height(len(df_plot), base=170, per_item=34, minimum=340, maximum=920)
+        height = _adaptive_height(len(df_plot), base=200, per_item=45, minimum=450, maximum=1200)
         palette = _palette_by_chart(theme, "horizontal")
         color = _resolve_default_color(color, palette[0])
         show_text = _should_show_text(len(df_plot), 14)
@@ -288,10 +290,10 @@ class ChartGenerator:
             marker_color=color,
             marker_line=dict(color=theme["border"], width=1),
             text=df_plot.apply(
-                lambda r: f"{int(r[col_val]):,}  ({r[col_pct]:.1f}%)", axis=1
-            ) if col_pct in df_plot.columns else df_plot[col_val].apply(lambda value: f"{int(value):,}"),
+                lambda r: f"<b>{int(r[col_val]):,}</b>  ({r[col_pct]:.1f}%)", axis=1
+            ) if col_pct in df_plot.columns else df_plot[col_val].apply(lambda value: f"<b>{int(value):,}</b>"),
             textposition="outside",
-            textfont=dict(color=theme["text"]),
+            textfont=dict(color=theme["text"], size=22),
             hovertemplate="<b>%{y}</b><br>Cantidad: %{x:,}<extra></extra>",
             cliponaxis=False,
             insidetextanchor="middle",
@@ -351,9 +353,9 @@ class ChartGenerator:
             y=df_plot[col_val],
             marker_color=colors,
             marker_line=dict(color=theme["border"], width=1),
-            text=df_plot[col_val].apply(lambda x: f"{int(x):,}"),
+            text=df_plot[col_val].apply(lambda x: f"<b>{int(x):,}</b>"),
             textposition="outside",
-            textfont=dict(color=theme["text"]),
+            textfont=dict(color=theme["text"], size=22),
             hovertemplate="<b>%{x}</b><br>Cantidad: %{y:,}<extra></extra>",
             cliponaxis=False,
         ))
@@ -371,7 +373,7 @@ class ChartGenerator:
                 tickvals=categories,
                 ticktext=_wrap_ticktext(categories, width=16, max_lines=2),
                 tickangle=-18,
-                tickfont=dict(size=11, color=theme["text"]),
+                tickfont=dict(size=24, color=theme["text"]),
                 automargin=True,
             )
 
@@ -436,8 +438,8 @@ class ChartGenerator:
             marker=dict(colors=palette[:item_count], line=dict(color=theme["surface"], width=2)),
             textinfo="percent" if compact_labels else "label+percent",
             textposition="inside" if compact_labels else "outside",
-            texttemplate="%{percent}" if compact_labels else "%{label}<br>%{percent}",
-            textfont=dict(color=theme["heading"], size=12),
+            texttemplate="<b>%{percent}</b>" if compact_labels else "<b>%{label}<br>%{percent}</b>",
+            textfont=dict(color=theme["heading"], size=22),
             insidetextorientation="horizontal",
             automargin=True,
             hovertemplate="<b>%{label}</b><br>Cantidad: %{value:,}<br>%{percent}<extra></extra>",
@@ -528,8 +530,8 @@ class ChartGenerator:
         elif point_count > 10:
             height = max(height, 500)
 
-        text_y1 = df_plot[col_y1].apply(lambda x: f"{int(x):,}")
-        text_y2 = df_plot[col_y2].apply(lambda x: f"{int(x):,}")
+        text_y1 = df_plot[col_y1].apply(lambda x: f"<b>{int(x):,}</b>")
+        text_y2 = df_plot[col_y2].apply(lambda x: f"<b>{int(x):,}</b>")
         mode = "lines+markers+text"
 
         fig = go.Figure()
@@ -543,7 +545,7 @@ class ChartGenerator:
             marker=dict(size=9, color=theme["primary"], line=dict(width=1, color=theme["surface"])),
             text=text_y1,
             textposition="top center",
-            textfont=dict(size=10, color=theme["text"]),
+            textfont=dict(size=22, color=theme["text"]),
             hovertemplate=f"<b>{label_y1}</b><br>%{{x}}: %{{y:,}}<extra></extra>",
         ))
 
@@ -556,7 +558,7 @@ class ChartGenerator:
             marker=dict(size=9, color=theme["accent"], line=dict(width=1, color=theme["surface"])),
             text=text_y2,
             textposition="bottom center",
-            textfont=dict(size=10, color=theme["text"]),
+            textfont=dict(size=22, color=theme["text"]),
             hovertemplate=f"<b>{label_y2}</b><br>%{{x}}: %{{y:,}}<extra></extra>",
         ))
 
@@ -602,9 +604,9 @@ class ChartGenerator:
             mode="lines+markers+text" if mostrar_texto else "lines+markers",
             line=dict(color=color, width=3, shape="spline", smoothing=0.55),
             marker=dict(size=10, color=color, line=dict(width=2, color=theme["surface"])),
-            text=df_plot[col_y].apply(lambda x: f"{int(x):,}") if mostrar_texto else None,
+            text=df_plot[col_y].apply(lambda x: f"<b>{int(x):,}</b>") if mostrar_texto else None,
             textposition="top center",
-            textfont=dict(size=11, color=theme["text"]),
+            textfont=dict(size=15, color=theme["text"]),
             hovertemplate="<b>%{x}</b><br>Cantidad: %{y:,}<extra></extra>",
         ))
 
@@ -652,9 +654,9 @@ class ChartGenerator:
             y=df_plot[col_y1],
             marker_color=palette[0],
             marker_line=dict(color=theme["border"], width=1),
-            text=df_plot[col_y1].apply(lambda x: f"{int(x):,}"),
+            text=df_plot[col_y1].apply(lambda x: f"<b>{int(x):,}</b>"),
             textposition="outside",
-            textfont=dict(color=theme["text"]),
+            textfont=dict(color=theme["text"], size=22),
             cliponaxis=False,
         ))
 
@@ -664,9 +666,9 @@ class ChartGenerator:
             y=df_plot[col_y2],
             marker_color=palette[1],
             marker_line=dict(color=theme["border"], width=1),
-            text=df_plot[col_y2].apply(lambda x: f"{int(x):,}"),
+            text=df_plot[col_y2].apply(lambda x: f"<b>{int(x):,}</b>"),
             textposition="outside",
-            textfont=dict(color=theme["text"]),
+            textfont=dict(color=theme["text"], size=22),
             cliponaxis=False,
         ))
 
@@ -695,7 +697,7 @@ class ChartGenerator:
         palette = _palette_by_chart(theme, "comparison")
         show_text = _should_show_text(len(df_plot), 12)
         if height is None:
-            height = _adaptive_height(len(df_plot), base=230, per_item=28, minimum=380, maximum=940)
+            height = _adaptive_height(len(df_plot), base=300, per_item=45, minimum=450, maximum=1200)
 
         fig = go.Figure()
 
@@ -706,9 +708,9 @@ class ChartGenerator:
             orientation="h",
             marker_color=palette[0],
             marker_line=dict(color=theme["border"], width=1),
-            text=df_plot[col_y1].apply(lambda x: f"{int(x):,}"),
+            text=df_plot[col_y1].apply(lambda x: f"<b>{int(x):,}</b>"),
             textposition="outside",
-            textfont=dict(color=theme["text"]),
+            textfont=dict(color=theme["text"], size=22),
             cliponaxis=False,
             hovertemplate=f"<b>{label_y1}</b><br>%{{y}}: %{{x:,}}<extra></extra>",
         ))
@@ -720,9 +722,9 @@ class ChartGenerator:
             orientation="h",
             marker_color=palette[1],
             marker_line=dict(color=theme["border"], width=1),
-            text=df_plot[col_y2].apply(lambda x: f"{int(x):,}"),
+            text=df_plot[col_y2].apply(lambda x: f"<b>{int(x):,}</b>"),
             textposition="outside",
-            textfont=dict(color=theme["text"]),
+            textfont=dict(color=theme["text"], size=22),
             cliponaxis=False,
             hovertemplate=f"<b>{label_y2}</b><br>%{{y}}: %{{x:,}}<extra></extra>",
         ))
@@ -779,14 +781,14 @@ class ChartGenerator:
             header=dict(
                 values=[f"<b>{c}</b>" for c in df_plot.columns],
                 fill_color=theme["accent"] if header_color == COLORES["header_red"] else header_color,
-                font=dict(color="white", size=13),
+                font=dict(color="white", size=22),
                 align="center",
                 height=35,
             ),
             cells=dict(
                 values=[df_plot[c].tolist() for c in df_plot.columns],
                 fill_color=fill_colors,
-                font=dict(size=12, color=theme["text"]),
+                font=dict(size=20, color=theme["text"]),
                 align=["left"] + ["center"] * (len(df_plot.columns) - 1),
                 height=28,
             ),
@@ -806,10 +808,10 @@ class ChartGenerator:
         """Heatmap para matrices de datos (ej: delito x mes)."""
         theme = _get_active_theme()
         row_count, col_count = df_pivot.shape
-        adaptive_height = _adaptive_height(row_count, base=250, per_item=34, minimum=320, maximum=920)
+        adaptive_height = _adaptive_height(row_count, base=300, per_item=55, minimum=400, maximum=1200)
         height = max(height, adaptive_height)
         show_text = True
-        text_size = 10 if row_count > 6 or col_count > 6 else 11
+        text_size = 20 if row_count > 6 or col_count > 6 else 22
         x_labels = df_pivot.columns.tolist()
         y_labels = df_pivot.index.tolist()
 
@@ -836,7 +838,7 @@ class ChartGenerator:
                     annotations.append(dict(
                         x=x_val,
                         y=y_val,
-                        text=f"{int(val):,}",
+                        text=f"<b>{int(val):,}</b>",
                         showarrow=False,
                         font=dict(size=text_size, color=cell_color),
                         xref="x",
@@ -875,7 +877,7 @@ class ChartGenerator:
         fig.add_trace(go.Indicator(
             mode="number+delta" if delta is not None else "number",
             value=valor if isinstance(valor, (int, float)) else 0,
-            title=dict(text=f"<b>{titulo}</b><br><span style='font-size:12px;color:{theme['text_muted']}'>{subtitulo}</span>"),
+            title=dict(text=f"<b>{titulo}</b><br><span style='font-size:14px;color:{theme['text_muted']}'>{subtitulo}</span>"),
             delta=dict(
                 reference=valor - delta if delta else None,
                 valueformat=",.0f",
@@ -884,7 +886,7 @@ class ChartGenerator:
             ) if delta is not None else None,
             number=dict(
                 valueformat=",",
-                font=dict(size=40, color=theme["heading"]),
+                font=dict(size=80, color=theme["heading"]),
             ),
         ))
 

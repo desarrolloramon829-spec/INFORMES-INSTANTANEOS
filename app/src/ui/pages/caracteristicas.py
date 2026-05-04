@@ -3,7 +3,7 @@ Página: Características del Hecho.
 Informes 6.4 (Movilidad), 6.5 (Armas), 6.6 (Ámbito), 6.10 (Modus operandi), 6.11 (Resueltos).
 """
 import streamlit as st
-from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar, mostrar_metricas_header
+from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar, mostrar_metricas_header, render_barras_con_toggle, render_boton_exportar
 from app.src.charts.generator import ChartGenerator
 from app.src.ui.editorial import close_stage, open_stage, render_hero, render_panel, render_section_heading, render_dataframe_as_html_table
 
@@ -65,11 +65,10 @@ def render():
         else:
             col1, col2 = st.columns([1.5, 1])
             with col1:
-                fig = charts.barras_horizontal(
-                    df_movil, "Medios de Movilidad",
-                    color="#5B9BD5",
+                render_barras_con_toggle(
+                    charts, df_movil, "Medios de Movilidad",
+                    key="caract_movilidad", color="#5B9BD5",
                 )
-                st.plotly_chart(fig, width="stretch")
             with col2:
                 st.markdown("#### Detalle ejecutivo")
                 _mostrar_tabla(df_movil)
@@ -83,11 +82,10 @@ def render():
         else:
             col1, col2 = st.columns([1.5, 1])
             with col1:
-                fig = charts.barras_horizontal(
-                    df_armas, "Armas Utilizadas en Hechos Delictivos",
-                    color="#CC0000",
+                render_barras_con_toggle(
+                    charts, df_armas, "Armas Utilizadas en Hechos Delictivos",
+                    key="caract_armas", color="#CC0000",
                 )
-                st.plotly_chart(fig, width="stretch")
             with col2:
                 st.markdown("#### Detalle ejecutivo")
                 _mostrar_tabla(df_armas)
@@ -104,11 +102,10 @@ def render():
                 fig = charts.dona(df_ambito, "Distribución por Ámbito")
                 st.plotly_chart(fig, width="stretch")
             with col2:
-                fig = charts.barras_horizontal(
-                    df_ambito, "Delitos por Ámbito de Ocurrencia",
-                    color="#70AD47",
+                render_barras_con_toggle(
+                    charts, df_ambito, "Delitos por Ámbito de Ocurrencia",
+                    key="caract_ambito", color="#70AD47",
                 )
-                st.plotly_chart(fig, width="stretch")
 
     # ---- Modus Operandi ----
     with tab_modus:
@@ -118,11 +115,10 @@ def render():
         if len(df_modus) == 0:
             st.warning("Sin datos disponibles")
         else:
-            fig = charts.barras_horizontal(
-                df_modus, f"Top {top_n} Modus Operandi",
-                color="#9B59B6",
+            render_barras_con_toggle(
+                charts, df_modus, f"Top {top_n} Modus Operandi",
+                key="caract_modus", color="#9B59B6",
             )
-            st.plotly_chart(fig, width="stretch")
 
     # ---- Hechos Resueltos ----
     with tab_resueltos:
@@ -176,6 +172,9 @@ def render():
         csv = engine.armas_utilizadas().to_csv(index=False).encode("utf-8")
         st.download_button("⬇️ Armas (CSV)", csv, "armas.csv", "text/csv")
     close_stage()
+
+    # Botón de exportación a Word
+    render_boton_exportar("🔍 Características", engine)
 
 
 def _mostrar_tabla(df):

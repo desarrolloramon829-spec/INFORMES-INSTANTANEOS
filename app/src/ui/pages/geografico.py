@@ -3,7 +3,7 @@ Página: Análisis Geográfico.
 Informes 6.8 (Jurisdicción), 6.9 (Unidad Regional).
 """
 import streamlit as st
-from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar, mostrar_metricas_header
+from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar, mostrar_metricas_header, render_barras_con_toggle, render_boton_exportar
 from app.src.charts.generator import ChartGenerator
 from app.config.settings import UNIDADES_REGIONALES
 from app.src.ui.editorial import close_stage, open_stage, render_hero, render_panel, render_section_heading, render_dataframe_as_html_table
@@ -73,11 +73,10 @@ def render():
                 st.plotly_chart(fig, width="stretch")
 
             with col2:
-                fig = charts.barras_horizontal(
-                    df_ur, "Ranking por Unidad Regional",
-                    color="#2563EB",
+                render_barras_con_toggle(
+                    charts, df_ur, "Ranking por Unidad Regional",
+                    key="geo_ur", color="#2563EB",
                 )
-                st.plotly_chart(fig, width="stretch")
 
             st.divider()
             st.markdown("#### Detalle ejecutivo")
@@ -96,12 +95,11 @@ def render():
         if len(df_juris) == 0:
             st.warning("Sin datos disponibles")
         else:
-            fig = charts.barras_horizontal(
-                df_juris,
+            render_barras_con_toggle(
+                charts, df_juris,
                 f"Top {top_n} Jurisdicciones con más Delitos",
-                color="#4472C4",
+                key="geo_juris", color="#4472C4",
             )
-            st.plotly_chart(fig, width="stretch")
 
             st.divider()
 
@@ -208,3 +206,6 @@ def render():
         st.download_button("⬇️ Regional vs delito (CSV)", csv,
                            "matriz_unidad_regional_delito.csv", "text/csv")
     close_stage()
+
+    # Botón de exportación a Word
+    render_boton_exportar("🗺️ Análisis Geográfico", engine)

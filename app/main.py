@@ -20,7 +20,7 @@ st.set_page_config(
 )
 
 
-from app.src.ui.pages import home, delitos, temporal, caracteristicas, geografico, comparativo, robos_hurtos
+from app.src.ui.pages import home, delitos, temporal, caracteristicas, geografico, comparativo, robos_hurtos, asistente_ia
 from app.src.ui.shared import render_boton_regenerar
 
 
@@ -597,6 +597,7 @@ def render_sidebar():
         # Navegación
         PAGINAS = [
             "🏠 Inicio",
+            "🧠 Asistente IA",
             "📋 Delitos por Modalidad",
             "🔫 Robos y Hurtos",
             "📅 Análisis Temporal",
@@ -637,6 +638,8 @@ def main():
 
     if "🏠 Inicio" in pagina:
         home.render()
+    elif "Asistente IA" in pagina:
+        asistente_ia.render()
     elif "Delitos por Modalidad" in pagina:
         delitos.render()
     elif "Robos y Hurtos" in pagina:

@@ -4,7 +4,7 @@ Página de inicio - Dashboard resumen.
 from html import escape
 
 import streamlit as st
-from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar, mostrar_metricas_header
+from app.src.ui.shared import cargar_datos, get_engine, render_filtros_sidebar, mostrar_metricas_header, render_barras_con_toggle, render_boton_exportar
 from app.src.charts.generator import ChartGenerator
 
 
@@ -152,9 +152,8 @@ def render():
         df_modal = engine.delitos_por_modalidad()
         modal_chart_height = None
         if len(df_modal) > 0:
-            fig = charts.barras_horizontal(df_modal, "Top Delitos por Modalidad")
-            modal_chart_height = fig.layout.height
-            st.plotly_chart(fig, width="stretch")
+            render_barras_con_toggle(charts, df_modal, "Top Delitos por Modalidad", key="home_modalidades")
+            modal_chart_height = 500
         else:
             st.warning("Sin datos para mostrar")
 
@@ -262,3 +261,6 @@ def render():
         )
     else:
         st.info("No se encontraron datos con fecha válida.")
+
+    # Botón de exportación a Word
+    render_boton_exportar("🏠 Inicio", engine)
